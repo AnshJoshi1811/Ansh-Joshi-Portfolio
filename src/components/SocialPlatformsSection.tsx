@@ -1,656 +1,498 @@
-import { useState } from 'react';
-import {
-  ArrowUpRight,
-  BookOpen,
-  Camera,
-  Compass,
-  Play,
-  Sparkles,
-} from 'lucide-react';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { ArrowBigUp, ArrowUpRight, Feather, Heart, Play, Plus, type LucideIcon } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
-  GITHUB_SHOWCASE,
   SOCIAL_PLATFORMS,
+  PORTRAIT_IMAGE,
+  type PixelSpriteKey,
   type SocialPlatformId,
 } from '../config/portfolioStructure';
-import { PeekOnHover } from './ui/PeekOnHover';
+import { useLatestFeed, type FeedItem } from '../config/latestFeed';
 import { PlatformIcon } from './ui/PlatformIcons';
 import { SectionHeader } from './ui/SectionHeader';
 import { SectionReveal } from './ui/SectionReveal';
-import { TransparentPixelSprite } from './ui/TransparentPixelSprite';
+import { BuddyStopSprite } from './ui/PixelAnshTravel';
+import { preloadPixelSprite } from './ui/TransparentPixelSprite';
 
-interface SocialPlatformsSectionProps {
-  selectedPlatformId: SocialPlatformId;
-  onSelectPlatform: (id: SocialPlatformId) => void;
-  onHoverPlatformChange: (id: SocialPlatformId | null) => void;
+interface PlatformVibe {
+  /** Stage background (light tint + a small motif that fits the platform) */
+  stage: CSSProperties;
+  border: string;
+  accent: string;
+  soft: string;
+  headingFont?: string;
 }
 
+const VIBES: Record<SocialPlatformId, PlatformVibe> = {
+  // Contribution-graph squares
+  github: {
+    stage: {
+      backgroundColor: '#F6FBF7',
+      backgroundImage:
+        'linear-gradient(#DCF3E3 0 0), linear-gradient(#C2E9CE 0 0), linear-gradient(#E8F7EC 0 0)',
+      backgroundSize: '10px 10px, 10px 10px, 10px 10px',
+      backgroundPosition: '24px 24px, 38px 24px, 24px 38px',
+      backgroundRepeat: 'no-repeat',
+    },
+    border: '#CDEBD5',
+    accent: '#1A7F37',
+    soft: '#DAFBE1',
+  },
+  // Clean professional dot grid
+  linkedin: {
+    stage: {
+      backgroundColor: '#F3F8FD',
+      backgroundImage: 'radial-gradient(rgba(10,102,194,0.12) 1px, transparent 1px)',
+      backgroundSize: '18px 18px',
+    },
+    border: '#CFE2F6',
+    accent: '#0A66C2',
+    soft: '#E1EEFB',
+  },
+  // Soft studio scanlines
+  youtube: {
+    stage: {
+      backgroundColor: '#FFF6F6',
+      backgroundImage:
+        'repeating-linear-gradient(0deg, rgba(204,0,0,0.05) 0 1px, transparent 1px 14px)',
+    },
+    border: '#FBD5D5',
+    accent: '#CC0000',
+    soft: '#FEE2E2',
+  },
+  // Warm paper with ruled lines
+  medium: {
+    stage: {
+      backgroundColor: '#FBF8F3',
+      backgroundImage:
+        'repeating-linear-gradient(0deg, rgba(26,26,26,0.06) 0 1px, transparent 1px 26px)',
+    },
+    border: '#EBD9A8',
+    accent: '#A16207',
+    soft: '#FEF3C7',
+    headingFont: 'Georgia, "Times New Roman", serif',
+  },
+  // Dashed highway centre line
+  reddit: {
+    stage: {
+      backgroundColor: '#FFF7F2',
+      backgroundImage:
+        'repeating-linear-gradient(90deg, rgba(255,69,0,0.28) 0 22px, transparent 22px 40px)',
+      backgroundSize: '100% 3px',
+      backgroundPosition: '0 calc(100% - 34px)',
+      backgroundRepeat: 'no-repeat',
+    },
+    border: '#FED7C3',
+    accent: '#FF4500',
+    soft: '#FFE8DC',
+  },
+  // Sunset gradient wash
+  instagram: {
+    stage: {
+      backgroundImage: 'linear-gradient(140deg, #FFF5F7 0%, #FDF4FF 50%, #FFF7ED 100%)',
+    },
+    border: '#F9D2E4',
+    accent: '#D62976',
+    soft: '#FCE7F3',
+  },
+};
+
+/** Little things that float up behind Ansh on each tab (null = contribution squares). */
+const BITS: Record<SocialPlatformId, LucideIcon | null> = {
+  github: null,
+  linkedin: Plus,
+  youtube: Play,
+  medium: Feather,
+  reddit: ArrowBigUp,
+  instagram: Heart,
+};
+
+const BIT_LAYOUT = [
+  { left: '12%', size: 14, delay: 0, duration: 5.2 },
+  { left: '26%', size: 10, delay: 1.6, duration: 4.4 },
+  { left: '40%', size: 16, delay: 3.1, duration: 5.8 },
+  { left: '58%', size: 11, delay: 0.8, duration: 4.8 },
+  { left: '72%', size: 15, delay: 2.4, duration: 5.4 },
+  { left: '86%', size: 10, delay: 3.8, duration: 4.6 },
+  { left: '20%', size: 12, delay: 4.6, duration: 5 },
+  { left: '64%', size: 13, delay: 5.2, duration: 5.6 },
+];
+
+function FloatingPlatformBits({ platformId, color }: { platformId: SocialPlatformId; color: string }) {
+  const Icon = BITS[platformId];
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      {BIT_LAYOUT.map((bit, i) => (
+        <span
+          key={i}
+          className="absolute bottom-6 animate-bit-rise"
+          style={{
+            left: bit.left,
+            color,
+            animationDelay: `${bit.delay}s`,
+            animationDuration: `${bit.duration}s`,
+          }}
+        >
+          {Icon ? (
+            <Icon style={{ width: bit.size, height: bit.size }} fill={platformId === 'medium' ? 'none' : 'currentColor'} strokeWidth={2.2} />
+          ) : (
+            <span
+              className="block rounded-[3px]"
+              style={{ width: bit.size, height: bit.size, backgroundColor: 'currentColor' }}
+            />
+          )}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Which Pixel Ansh outfit each tab shows (LinkedIn uses the everyday, lanyard Ansh). */
+const OUTFITS: Record<SocialPlatformId, PixelSpriteKey> = {
+  github: 'github',
+  linkedin: 'hero',
+  youtube: 'youtube',
+  medium: 'medium',
+  reddit: 'reddit',
+  instagram: 'instagram',
+};
+
 /**
- * Section 02 — MAIN Showcase: Social Worlds, Study Log & Off-the-Clock.
- * Every single platform tab shifts the entire stage into its own signature theme!
- * Hovering any tab makes nose-only sneaking Ansh (`peekingNose`) peer right over the edge,
- * while the main Pixel Ansh glides cleanly to the right side of the viewport.
+ * Socials: one light-themed stage per platform. Pixel Ansh lives inside the
+ * stage, changes outfit when you click a tab and hops on every switch.
  */
-export function SocialPlatformsSection({
-  selectedPlatformId,
-  onSelectPlatform,
-  onHoverPlatformChange,
-}: SocialPlatformsSectionProps) {
+export function SocialPlatformsSection() {
   const prefersReducedMotion = useReducedMotion();
-  const [hoveredId, setHoveredId] = useState<SocialPlatformId | null>(null);
+  const [selectedId, setSelectedId] = useState<SocialPlatformId>('github');
 
-  const activePlatform =
-    SOCIAL_PLATFORMS.find((p) => p.id === selectedPlatformId) ??
-    SOCIAL_PLATFORMS[0];
-  const theme = activePlatform.theme;
+  const platform = SOCIAL_PLATFORMS.find((p) => p.id === selectedId) ?? SOCIAL_PLATFORMS[0];
+  const feed = useLatestFeed()[platform.id];
+  const vibe = VIBES[platform.id];
 
-  const handleHover = (id: SocialPlatformId | null) => {
-    setHoveredId(id);
-    onHoverPlatformChange(id);
-  };
+  // Process every outfit up front so switching never shows an empty stage
+  useEffect(() => {
+    Object.values(OUTFITS).forEach((outfit) => preloadPixelSprite(outfit, 144));
+  }, []);
 
   return (
     <section
       id="social-platforms"
       aria-labelledby="social-platforms-heading"
-      className="border-t border-hairline bg-canvas py-16 sm:py-20 lg:py-24"
+      className="border-t border-hairline py-10 sm:py-12 lg:py-14"
     >
-      {/* Generous right space on desktop so right-docked Pixel Ansh sits cleanly beside Socials */}
-      <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:pl-[192px] lg:pr-[256px] xl:pl-[216px] xl:pr-[292px]">
+      <div className="mx-auto max-w-[1120px] px-5 sm:px-8">
         <SectionReveal>
           <SectionHeader
             index="02"
             title="Where I build, teach & share"
             headingId="social-platforms-heading"
-            scopeNote="My main corner of the internet—every tab carries its own theme. Hover any platform to catch Ansh sneaking up over the edge, and switch tabs to explore System Design, CloudNetExplained, articles, and Side Stand Stories."
           />
 
-          {/* 6-Platform Selector Tabs with Nose-Only Sneaking Ansh on Hover */}
+          {/* Themed stage */}
           <div
-            role="tablist"
-            aria-label="Choose a social platform"
-            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-11 mb-7"
+            id="social-stage"
+            role="tabpanel"
+            aria-label={`${platform.name}: latest`}
+            className="relative grid grid-cols-1 md:grid-cols-[360px_minmax(0,1fr)] md:min-h-[480px] gap-2 md:gap-6"
           >
-            {SOCIAL_PLATFORMS.map((platform) => {
-              const isSelected = platform.id === activePlatform.id;
-              const isPeeking = hoveredId === platform.id;
+            {/* Left: Pixel Ansh's game frame with the platform switcher */}
+            <div className="relative px-5 py-6 flex flex-col items-center blueprint-dots">
+              <FrameCorners />
 
-              return (
-                <div
-                  key={platform.id}
-                  className="relative"
-                  onMouseEnter={() => handleHover(platform.id)}
-                  onMouseLeave={() => handleHover(null)}
-                >
-                  {/* Nose-only sneaking Ansh peering strictly till his nose over the tab */}
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute -top-[44px] inset-x-0 h-[46px] overflow-hidden flex items-end justify-center z-0"
-                  >
-                    <motion.div
-                      initial={false}
-                      animate={
-                        isPeeking
-                          ? { y: 6, opacity: 1 }
-                          : { y: 48, opacity: 0 }
-                      }
-                      transition={
-                        prefersReducedMotion
-                          ? { duration: 0.01 }
-                          : { type: 'spring', stiffness: 460, damping: 24 }
-                      }
-                    >
-                      <TransparentPixelSprite
-                        spriteKey="peekingNose"
-                        pixelGrid={120}
-                        className="w-[64px] h-[64px]"
-                      />
-                    </motion.div>
-                  </div>
+              <p className="relative z-10 inline-flex items-center gap-2 t-eyebrow text-ink">
+                <span style={{ color: vibe.accent }}>
+                  <PlatformIcon platform={platform.id} className="w-4 h-4" />
+                </span>
+                {platform.name}
+                <span className="t-meta normal-case tracking-normal text-muted truncate max-w-[150px]">· {platform.handle}</span>
+              </p>
 
-                  {/* Subtle themed teaser whisper on hover */}
-                  <AnimatePresence>
-                    {isPeeking && (
-                      <motion.div
-                        initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 2 }}
-                        transition={{ duration: 0.13 }}
-                        className={`pointer-events-none hidden sm:block absolute -top-[74px] left-1/2 -translate-x-1/2 z-20 whitespace-nowrap font-mono text-[10px] rounded-lg px-2.5 py-1 shadow-md ${platform.theme.headerBg} ${platform.theme.headerText}`}
-                      >
-                        {platform.peekTeaser}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+              <div className="relative w-full flex-1 flex flex-col items-center justify-center py-4">
+                {/* Platform-themed icons drifting up behind Ansh */}
+                <FloatingPlatformBits key={selectedId} platformId={selectedId} color={vibe.accent} />
+                <BuddyStopSprite
+                  stop="social-platforms"
+                  spriteKey={OUTFITS[selectedId]}
+                  hopKey={selectedId}
+                  alt={`Pixel Ansh dressed for ${platform.name}`}
+                  className="relative w-52 h-52 sm:w-56 sm:h-56"
+                />
+                {/* Pixel platform he stands on */}
+                <span aria-hidden="true" className="relative -mt-3 h-3 w-48 border-2 border-ink/80 bg-hairline-strong/80" />
+              </div>
 
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={isSelected}
-                    onFocus={() => handleHover(platform.id)}
-                    onBlur={() => handleHover(null)}
-                    onClick={() => onSelectPlatform(platform.id)}
-                    className={`relative z-10 w-full flex items-center gap-2.5 px-3 py-3 rounded-xl border text-left transition-all duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-cobalt focus-visible:outline-offset-2 ${
-                      isSelected
-                        ? platform.theme.tabActive
-                        : 'bg-surface border-hairline text-muted hover:text-ink hover:border-hairline-strong'
-                    }`}
-                  >
-                    <span
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+              {/* Platform switcher */}
+              <div role="tablist" aria-label="Choose a platform" className="relative z-10 flex flex-nowrap justify-center gap-1.5">
+                {SOCIAL_PLATFORMS.map((p) => {
+                  const isSelected = p.id === selectedId;
+                  const tabVibe = VIBES[p.id];
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={isSelected}
+                      aria-controls="social-stage"
+                      aria-label={p.name}
+                      title={p.name}
+                      onClick={() => setSelectedId(p.id)}
+                      style={
                         isSelected
-                          ? 'bg-white/15 text-current'
-                          : 'bg-recessed text-ink'
+                          ? {
+                              backgroundColor: tabVibe.accent,
+                              borderColor: '#0F172A',
+                              color: '#FFFFFF',
+                              boxShadow: '3px 3px 0 0 #0F172A',
+                            }
+                          : ({ '--tab-accent': tabVibe.accent } as CSSProperties)
+                      }
+                      className={`w-10 h-10 flex items-center justify-center border-2 transition-[transform,box-shadow,color] duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2 ${
+                        isSelected
+                          ? '-translate-x-px -translate-y-px'
+                          : 'bg-white border-ink/80 text-ink hover:text-[var(--tab-accent)] hover:-translate-y-0.5'
                       }`}
                     >
-                      <PlatformIcon platform={platform.id} className="w-4 h-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <span className="block font-display text-sm font-bold truncate">
-                        {platform.name}
-                      </span>
-                      <span
-                        className={`block font-mono text-[10px] truncate ${
-                          isSelected ? 'opacity-80' : 'text-muted'
-                        }`}
-                      >
-                        {platform.id === 'reddit'
-                          ? 'Side Stand'
-                          : isSelected
-                            ? 'Active'
-                            : 'Switch'}
-                      </span>
-                    </div>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                      <PlatformIcon platform={p.id} className="w-4 h-4" />
+                    </button>
+                  );
+                })}
+              </div>
 
-          {/* Per-Tab Signature Themed Showcase Panel */}
-          <div className="bg-surface border border-hairline rounded-2xl overflow-hidden shadow-[0_14px_38px_-24px_rgba(15,23,42,0.22)]">
+              <a
+                href={platform.profileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ backgroundColor: vibe.accent, boxShadow: '4px 4px 0 0 #0F172A' }}
+                className="relative z-10 mt-4 w-full max-w-[300px] inline-flex items-center justify-center gap-2 py-3 border-2 border-ink t-eyebrow !text-[13px] text-white transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5"
+              >
+                Open {platform.name}
+                <ArrowUpRight className="w-4 h-4" aria-hidden="true" />
+              </a>
+            </div>
+
+            {/* Newest item as a preview card, then short links to the next few */}
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
-                key={activePlatform.id}
-                initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -5 }}
-                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                key={platform.id}
+                initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -8 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className="min-w-0 py-2 md:py-6 flex flex-col justify-center gap-5"
               >
-                {/* Signature Per-Platform Themed Header Banner */}
-                <div
-                  className={`${theme.headerBg} ${theme.headerText} p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-5`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-white/15 border border-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
-                      <PlatformIcon
-                        platform={activePlatform.id}
-                        className="w-5 h-5"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <div
-                        className={`flex flex-wrap items-center gap-x-2 text-xs font-mono ${theme.headerMuted}`}
-                      >
-                        <span className="font-semibold">{activePlatform.handle}</span>
-                        <span aria-hidden="true">·</span>
-                        <span>{activePlatform.personaTitle}</span>
-                      </div>
-                      <h3 className="font-display text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">
-                        {activePlatform.headline}
-                      </h3>
-                    </div>
+                <LatestCard platformId={platform.id} platformName={platform.name} item={feed.featured} vibe={vibe} />
+
+                {/* Same height on every tab: room for three links, profile link if a feed has none */}
+                {(
+                  <div className="space-y-2 min-h-[166px]">
+                    <p className="t-eyebrow text-muted">More from {platform.name}</p>
+                    <ul className="grid gap-1.5">
+                      {(feed.more.length > 0
+                        ? feed.more.slice(0, 3)
+                        : [{ title: `Everything on ${platform.name}`, url: platform.profileUrl, date: 'Profile' }]
+                      ).map((item) => (
+                        <li key={item.url + item.title}>
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ borderColor: vibe.border }}
+                            className="group flex items-center gap-3 rounded-lg border bg-white/75 px-3.5 py-2.5 hover:bg-white transition-colors"
+                          >
+                            <span className="min-w-0 flex-1 t-small font-semibold text-ink truncate">{item.title}</span>
+                            <span className="shrink-0 t-meta text-muted">{item.date}</span>
+                            <ArrowUpRight
+                              className="w-4 h-4 shrink-0 text-muted group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform"
+                              aria-hidden="true"
+                            />
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-
-                  <a
-                    href={activePlatform.profileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 px-4 py-2.5 text-sm font-semibold text-white transition-colors whitespace-nowrap shrink-0 self-start md:self-auto"
-                  >
-                    <span>Open {activePlatform.name}</span>
-                    <ArrowUpRight className="w-4 h-4" aria-hidden="true" />
-                  </a>
-                </div>
-
-                {/* Per-Platform Themed Content Stage */}
-                <div className="p-6 sm:p-8">
-                  {/* 1. GITHUB — Midnight Slate & Emerald Theme */}
-                  {activePlatform.id === 'github' && (
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-                        <PeekOnHover align="right" size="sm" className="lg:col-span-7">
-                          <article className="h-full bg-[#0F172A] text-white border border-slate-800 rounded-xl p-6 flex flex-col justify-between gap-6">
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between font-mono text-xs text-slate-400">
-                                <span className="text-[#10B981] font-semibold">
-                                  Featured GitHub Guide
-                                </span>
-                                <span>Live Interactive Site</span>
-                              </div>
-
-                              <h4 className="font-display text-xl sm:text-2xl font-bold leading-tight">
-                                {GITHUB_SHOWCASE.featuredProject.title}
-                              </h4>
-
-                              <p className="text-sm text-slate-300 leading-relaxed">
-                                {GITHUB_SHOWCASE.featuredProject.description}
-                              </p>
-
-                              <p className="text-xs font-mono text-emerald-300/90">
-                                {GITHUB_SHOWCASE.featuredProject.stack}
-                              </p>
-                            </div>
-
-                            <div className="pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
-                              <span className="font-mono text-xs text-slate-400 truncate">
-                                anshjoshi1811.github.io/SystemDesign/
-                              </span>
-                              <a
-                                href={GITHUB_SHOWCASE.featuredProject.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`pro-btn px-3.5 py-2 text-xs ${theme.ctaBg} ${theme.ctaHover} ${theme.ctaText}`}
-                              >
-                                <span>Explore SystemDesign</span>
-                                <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                              </a>
-                            </div>
-                          </article>
-                        </PeekOnHover>
-
-                        {/* "Abhi kya padh raha hoon" Study Log */}
-                        <PeekOnHover align="right" size="sm" className="lg:col-span-5">
-                          <aside
-                            className={`h-full ${theme.softSurface} border ${theme.softBorder} rounded-xl p-6 flex flex-col justify-between gap-5`}
-                          >
-                            <div className="space-y-3.5">
-                              <div className="flex items-center gap-2 font-mono text-xs text-[#065F46]">
-                                <BookOpen className="w-4 h-4 text-[#059669]" aria-hidden="true" />
-                                <span className="font-bold">
-                                  {GITHUB_SHOWCASE.currentlyReading.heading}
-                                </span>
-                              </div>
-
-                              <p className="text-xs text-[#047857]">
-                                {GITHUB_SHOWCASE.currentlyReading.subtitle}
-                              </p>
-
-                              <ul className="space-y-3">
-                                {GITHUB_SHOWCASE.currentlyReading.topics.map((topic, idx) => (
-                                  <li
-                                    key={topic}
-                                    className="flex items-start gap-2.5 text-sm text-ink leading-snug"
-                                  >
-                                    <span className="font-mono text-[11px] font-bold text-[#059669] pt-0.5 tabular-nums">
-                                      0{idx + 1}
-                                    </span>
-                                    <span>{topic}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-
-                            <p className="pt-3 border-t border-[#A7F3D0] font-mono text-[11px] text-[#047857]">
-                              Updated alongside my GitHub study notes
-                            </p>
-                          </aside>
-                        </PeekOnHover>
-                      </div>
-
-                      {/* Two Compact Engineering Builds */}
-                      <div className="space-y-3">
-                        <p className="font-mono text-xs text-muted">
-                          Additional Engineering Builds
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {GITHUB_SHOWCASE.secondaryProjects.map((proj, idx) => (
-                            <PeekOnHover key={proj.title} align="right" size="sm">
-                              <article className="h-full bg-canvas border border-hairline rounded-xl p-5 flex flex-col justify-between gap-4 hover:border-[#10B981]/60 transition-colors">
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between font-mono text-[11px] text-muted">
-                                    <span className="text-[#059669] font-semibold">
-                                      Build 0{idx + 2}
-                                    </span>
-                                    <span>{proj.stack}</span>
-                                  </div>
-                                  <h5 className="font-display text-base font-bold text-ink">
-                                    {proj.title}
-                                  </h5>
-                                  <p className="text-xs sm:text-sm text-muted leading-relaxed">
-                                    {proj.summary}
-                                  </p>
-                                </div>
-
-                                <a
-                                  href={proj.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#059669] hover:text-ink transition-colors whitespace-nowrap self-start"
-                                >
-                                  <span>View on GitHub</span>
-                                  <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                                </a>
-                              </article>
-                            </PeekOnHover>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 2. LINKEDIN — Executive Royal Blue Theme */}
-                  {activePlatform.id === 'linkedin' && (
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
-                      <PeekOnHover align="right" size="sm" className="md:col-span-7">
-                        <article className="h-full bg-canvas border border-hairline rounded-xl p-6 space-y-3.5">
-                          <div className="flex items-center gap-2 font-mono text-xs text-[#0A66C2] font-semibold">
-                            <Sparkles className="w-4 h-4" aria-hidden="true" />
-                            <span>Career Snapshot · Star Employee of the Month</span>
-                          </div>
-                          <h4 className="font-display text-xl sm:text-2xl font-bold text-ink">
-                            Development Engineer in Cloud at Calsoft
-                          </h4>
-                          <p className="text-sm text-muted leading-relaxed">
-                            Shipping reliable backend services, running 15+ ONAP pods on AWS-hosted Kubernetes clusters, automating CI/CD with Jenkins &amp; CodePipeline, and codifying multi-cloud environments with Terraform.
-                          </p>
-                          <p className="text-xs font-mono text-[#0A66C2] pt-1">
-                            Pune, India · AWS Certified Solutions Architect – Associate
-                          </p>
-                        </article>
-                      </PeekOnHover>
-
-                      <PeekOnHover align="right" size="sm" className="md:col-span-5">
-                        <div
-                          className={`h-full ${theme.softSurface} border ${theme.softBorder} rounded-xl p-6 flex flex-col justify-between gap-4`}
-                        >
-                          <div className="space-y-2">
-                            <p className={`font-mono text-xs font-semibold ${theme.badgeText}`}>
-                              Direct Connection
-                            </p>
-                            <p className="font-display text-lg font-bold text-ink">
-                              Connect on LinkedIn
-                            </p>
-                            <p className="text-xs sm:text-sm text-muted leading-relaxed">
-                              Always happy to connect around software engineering, distributed systems, cloud infrastructure, and structured AI workflows.
-                            </p>
-                          </div>
-                          <a
-                            href="https://linkedin.com/in/anshjoshi1811"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`pro-btn px-4 py-2 text-xs self-start ${theme.ctaBg} ${theme.ctaHover} ${theme.ctaText}`}
-                          >
-                            <span>Open LinkedIn Profile</span>
-                            <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                          </a>
-                        </div>
-                      </PeekOnHover>
-                    </div>
-                  )}
-
-                  {/* 3. YOUTUBE — Studio Crimson Theme (@CloudNetExplained) */}
-                  {activePlatform.id === 'youtube' && (
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
-                      <PeekOnHover align="right" size="sm" className="md:col-span-7">
-                        <article className="h-full bg-canvas border border-[#FECACA] rounded-xl overflow-hidden flex flex-col justify-between">
-                          <div className="aspect-video bg-gradient-to-br from-[#450A0A] via-[#7F1D1D] to-[#991B1B] text-white p-6 flex flex-col justify-between">
-                            <div className="flex items-center justify-between font-mono text-xs text-red-200">
-                              <span className="font-semibold text-white">Latest Upload · Top</span>
-                              <span>@CloudNetExplained</span>
-                            </div>
-                            <div className="flex flex-col items-center justify-center flex-1 text-center gap-3">
-                              <a
-                                href="https://www.youtube.com/@CloudNetExplained/videos"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label="Watch latest upload on CloudNetExplained YouTube channel"
-                                className="w-15 h-15 rounded-2xl bg-[#DC2626] hover:bg-[#EF4444] text-white flex items-center justify-center transition-transform hover:scale-105 shadow-lg"
-                              >
-                                <Play className="w-6 h-6 ml-0.5 fill-current" aria-hidden="true" />
-                              </a>
-                              <p className="font-display text-lg font-bold text-white">
-                                CloudNetExplained — Latest Videos
-                              </p>
-                            </div>
-                            <span className="font-mono text-[11px] text-red-200/90">
-                              youtube.com/@CloudNetExplained/videos
-                            </span>
-                          </div>
-
-                          <div className="p-5 flex flex-wrap items-center justify-between gap-3">
-                            <p className="text-xs sm:text-sm text-muted">
-                              Watch the newest cloud &amp; networking walkthrough on YouTube.
-                            </p>
-                            <a
-                              href="https://www.youtube.com/@CloudNetExplained/videos"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`pro-btn px-3.5 py-2 text-xs ${theme.ctaBg} ${theme.ctaHover} ${theme.ctaText}`}
-                            >
-                              <span>Watch Latest</span>
-                              <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                            </a>
-                          </div>
-                        </article>
-                      </PeekOnHover>
-
-                      <PeekOnHover align="right" size="sm" className="md:col-span-5">
-                        <div
-                          className={`h-full ${theme.softSurface} border ${theme.softBorder} rounded-xl p-6 flex flex-col justify-between gap-4`}
-                        >
-                          <div className="space-y-2.5">
-                            <p className={`font-mono text-xs font-semibold ${theme.badgeText}`}>
-                              Channel Focus
-                            </p>
-                            <h4 className="font-display text-xl font-bold text-ink">
-                              Cloud &amp; Networking Explained Visually
-                            </h4>
-                            <p className="text-sm text-muted leading-relaxed">
-                              Clear visual breakdowns of AWS networking, Kubernetes pods, and real backend engineering concepts straight from production systems.
-                            </p>
-                          </div>
-                          <a
-                            href="https://www.youtube.com/@CloudNetExplained"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`inline-flex items-center gap-1.5 text-xs font-semibold ${theme.badgeText} hover:text-ink pt-3 border-t ${theme.softBorder}`}
-                          >
-                            <span>Open @CloudNetExplained Channel</span>
-                            <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                          </a>
-                        </div>
-                      </PeekOnHover>
-                    </div>
-                  )}
-
-                  {/* 4. MEDIUM — Editorial Ink & Warm Amber Theme (@anshjoshii) */}
-                  {activePlatform.id === 'medium' && (
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
-                      <PeekOnHover align="right" size="sm" className="md:col-span-8">
-                        <article
-                          className={`h-full ${theme.softSurface} border ${theme.softBorder} rounded-xl p-6 flex flex-col justify-between gap-5`}
-                        >
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between font-mono text-xs text-stone-600">
-                              <span className="text-[#B45309] font-semibold">
-                                Latest Editorial · Top
-                              </span>
-                              <span>medium.com/@anshjoshii</span>
-                            </div>
-                            <h4 className="font-display text-xl sm:text-2xl font-bold text-[#1C1917] leading-tight">
-                              Latest Engineering Articles on Medium
-                            </h4>
-                            <p className="text-sm text-stone-700 leading-relaxed">
-                              Read my newest write-ups on backend services, Kubernetes clusters, cloud automation, and practical engineering trade-offs from shipping production systems.
-                            </p>
-                          </div>
-
-                          <div className="pt-4 border-t border-[#FDE68A] flex flex-wrap items-center justify-between gap-3">
-                            <span className="font-mono text-xs text-stone-600">@anshjoshii</span>
-                            <a
-                              href="https://medium.com/@anshjoshii"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`pro-btn px-3.5 py-2 text-xs ${theme.ctaBg} ${theme.ctaHover} ${theme.ctaText}`}
-                            >
-                              <span>Read Latest Story</span>
-                              <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                            </a>
-                          </div>
-                        </article>
-                      </PeekOnHover>
-
-                      <PeekOnHover align="right" size="sm" className="md:col-span-4">
-                        <div className="h-full bg-[#1C1917] text-[#FAFAF9] border border-stone-800 rounded-xl p-6 flex flex-col justify-between gap-4">
-                          <div className="space-y-2">
-                            <p className="font-mono text-xs text-[#FDE68A]">Writing Style</p>
-                            <p className="font-display text-lg font-bold">
-                              Practical, production-tested notes
-                            </p>
-                            <p className="text-xs sm:text-sm text-stone-300 leading-relaxed">
-                              No filler—just clear breakdowns, real debugging lessons, and repeatable infrastructure guides.
-                            </p>
-                          </div>
-                          <span className="font-mono text-[11px] text-stone-400">
-                            medium.com/@anshjoshii
-                          </span>
-                        </div>
-                      </PeekOnHover>
-                    </div>
-                  )}
-
-                  {/* 5. REDDIT — Highway Terracotta Orange Theme (Side Stand Stories) */}
-                  {activePlatform.id === 'reddit' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-                      <PeekOnHover align="right" size="sm" className="lg:col-span-7">
-                        <article
-                          className={`h-full ${theme.softSurface} border ${theme.softBorder} rounded-xl p-6 flex flex-col justify-between gap-6`}
-                        >
-                          <div className="space-y-3.5">
-                            <div className="flex items-center gap-2 font-mono text-xs text-[#C2410C] font-semibold">
-                              <Compass className="w-4 h-4" aria-hidden="true" />
-                              <span>Off the Clock · Side Stand Stories</span>
-                            </div>
-                            <h4 className="font-display text-xl sm:text-2xl font-bold text-ink leading-tight">
-                              Road trips, detours, and stories told with the kickstand down.
-                            </h4>
-                            <p className="text-sm text-stone-700 leading-relaxed">
-                              Away from code and clusters, I write about motorcycle rides, solo travel moments, and candid highway stories under{' '}
-                              <strong className="text-ink font-semibold">Side Stand Stories</strong> on Reddit.
-                            </p>
-                          </div>
-
-                          <div className="pt-4 border-t border-[#FED7AA] flex flex-wrap items-center justify-between gap-3">
-                            <span className="font-mono text-xs text-[#9A3412]">
-                              u/Original_Mongoose_74 · Latest Posts
-                            </span>
-                            <a
-                              href="https://www.reddit.com/user/Original_Mongoose_74/submitted/"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`pro-btn px-3.5 py-2 text-xs ${theme.ctaBg} ${theme.ctaHover} ${theme.ctaText}`}
-                            >
-                              <span>Read Latest Post</span>
-                              <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                            </a>
-                          </div>
-                        </article>
-                      </PeekOnHover>
-
-                      <PeekOnHover align="right" size="sm" className="lg:col-span-5">
-                        <div className="h-full bg-[#431407] text-orange-50 border border-[#7C2D12] rounded-xl p-6 flex flex-col justify-between gap-4">
-                          <div className="space-y-2">
-                            <p className="font-mono text-xs text-orange-300">Travel Journal Feed</p>
-                            <p className="font-display text-lg font-bold text-white">
-                              Side Stand Stories
-                            </p>
-                            <p className="text-xs sm:text-sm text-orange-100/85 leading-relaxed">
-                              Every ride begins when the side stand kicks up and turns into a story when it drops back down.
-                            </p>
-                          </div>
-
-                          <div className="pt-4 border-t border-[#7C2D12] flex flex-col gap-2">
-                            <a
-                              href="https://www.reddit.com/user/Original_Mongoose_74/submitted/"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center justify-between text-xs font-semibold text-orange-100 hover:text-white py-1"
-                            >
-                              <span>Latest Submitted Stories</span>
-                              <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                            </a>
-                            <a
-                              href="https://www.reddit.com/user/Original_Mongoose_74/"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center justify-between text-xs font-semibold text-orange-100 hover:text-white py-1"
-                            >
-                              <span>Full Reddit Profile</span>
-                              <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                            </a>
-                          </div>
-                        </div>
-                      </PeekOnHover>
-                    </div>
-                  )}
-
-                  {/* 6. INSTAGRAM — Coral-Rose Gradient Theme (@its_unsh) */}
-                  {activePlatform.id === 'instagram' && (
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
-                      <PeekOnHover align="right" size="sm" className="md:col-span-7">
-                        <article
-                          className={`h-full ${theme.softSurface} border ${theme.softBorder} rounded-xl p-6 flex flex-col justify-between gap-6`}
-                        >
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between font-mono text-xs text-[#9D174D]">
-                              <span className="font-semibold">Latest Post · Top</span>
-                              <span>@its_unsh</span>
-                            </div>
-                            <h4 className="font-display text-xl sm:text-2xl font-bold text-ink leading-tight">
-                              Latest Snapshots on @its_unsh
-                            </h4>
-                            <p className="text-sm text-muted leading-relaxed">
-                              Road trips, developer community events, candid frames, and moments away from the keyboard—jump right to the top of my visual diary.
-                            </p>
-                          </div>
-
-                          <div className="pt-4 border-t border-[#FBCFE8] flex flex-wrap items-center justify-between gap-3">
-                            <span className="font-mono text-xs text-[#9D174D]">
-                              instagram.com/its_unsh
-                            </span>
-                            <a
-                              href="https://www.instagram.com/its_unsh/"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`pro-btn px-3.5 py-2 text-xs ${theme.ctaBg} ${theme.ctaHover} ${theme.ctaText}`}
-                            >
-                              <span>View Latest Post</span>
-                              <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                            </a>
-                          </div>
-                        </article>
-                      </PeekOnHover>
-
-                      <PeekOnHover align="right" size="sm" className="md:col-span-5">
-                        <div className="h-full bg-gradient-to-br from-[#831843] via-[#BE185D] to-[#DB2777] text-white rounded-xl p-6 flex flex-col items-center justify-center text-center gap-3">
-                          <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center">
-                            <Camera className="w-6 h-6" aria-hidden="true" />
-                          </div>
-                          <p className="font-display text-lg font-bold">@its_unsh</p>
-                          <p className="text-xs text-pink-100 max-w-[26ch] leading-relaxed">
-                            Behind-the-scenes frames, highway sunsets, and everyday moments off the terminal.
-                          </p>
-                        </div>
-                      </PeekOnHover>
-                    </div>
-                  )}
-                </div>
+                )}
               </motion.div>
             </AnimatePresence>
           </div>
         </SectionReveal>
       </div>
     </section>
+  );
+}
+
+/** Corner brackets around Pixel Ansh's frame */
+function FrameCorners() {
+  const corner = 'absolute w-5 h-5 border-ink/35';
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+      <span className={`${corner} top-0 left-0 border-t-2 border-l-2`} />
+      <span className={`${corner} top-0 right-0 border-t-2 border-r-2`} />
+      <span className={`${corner} bottom-0 left-0 border-b-2 border-l-2`} />
+      <span className={`${corner} bottom-0 right-0 border-b-2 border-r-2`} />
+    </div>
+  );
+}
+
+const CTA: Record<SocialPlatformId, string> = {
+  github: 'Open repo',
+  linkedin: 'Connect on LinkedIn',
+  youtube: 'Watch latest',
+  medium: 'Read latest story',
+  reddit: 'Read the story',
+  instagram: 'Watch the reel',
+};
+
+interface LatestCardProps {
+  platformId: SocialPlatformId;
+  platformName: string;
+  item: FeedItem;
+  vibe: PlatformVibe;
+}
+
+/** The newest post/video/repo as a preview card with a hard pixel shadow. */
+function LatestCard({ platformId, platformName, item, vibe }: LatestCardProps) {
+  return (
+    <a
+      href={item.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ borderColor: vibe.accent, boxShadow: `6px 6px 0 0 ${vibe.accent}33` }}
+      className="group grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] lg:h-[212px] rounded-md border-2 bg-white overflow-hidden transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5"
+    >
+      <div
+        className="relative h-40 lg:h-full overflow-hidden border-b-2 lg:border-b-0 lg:border-r-2"
+        style={{ borderColor: vibe.accent }}
+      >
+        <PreviewMedia platformId={platformId} item={item} vibe={vibe} />
+      </div>
+
+      <div className="min-w-0 p-4 sm:p-5 flex flex-col">
+        <div className="flex items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-2 t-eyebrow text-ink">
+            <PlatformIcon platform={platformId} className="w-4 h-4" />
+            {platformName}
+          </span>
+          {item.date && (
+            <span className="inline-flex items-center gap-1.5 t-meta text-muted">
+              <span aria-hidden="true" className="w-1.5 h-1.5" style={{ backgroundColor: vibe.accent }} />
+              {item.date}
+            </span>
+          )}
+        </div>
+        <p className="mt-2.5 t-h4 text-ink line-clamp-2">{item.title}</p>
+        {item.excerpt && <p className="mt-1.5 t-small text-muted line-clamp-2">{item.excerpt}</p>}
+        <div className="mt-auto pt-3 flex items-center justify-between gap-3 border-t border-hairline">
+          <span className="inline-flex items-center gap-1 t-eyebrow" style={{ color: vibe.accent }}>
+            {CTA[platformId]}
+            <ArrowUpRight className="w-3.5 h-3.5 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
+          </span>
+          {item.meta && <span className="t-meta text-muted truncate">{item.meta}</span>}
+        </div>
+      </div>
+    </a>
+  );
+}
+
+/** Deterministic 0..n-1 from a string, so the GitHub grid looks the same for the same repo. */
+function hashOf(text: string) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return () => {
+    h = Math.imul(h ^ (h >>> 15), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+}
+
+function PreviewMedia({ platformId, item, vibe }: { platformId: SocialPlatformId; item: FeedItem; vibe: PlatformVibe }) {
+  if (item.image) {
+    return (
+      <>
+        <img
+          src={item.image}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        {platformId === 'youtube' && (
+          <span className="absolute left-3 bottom-3 inline-flex items-center gap-1.5 bg-white px-2.5 py-1 border-2 t-eyebrow text-ink" style={{ borderColor: vibe.accent }}>
+            <Play className="w-3.5 h-3.5" fill={vibe.accent} stroke={vibe.accent} aria-hidden="true" />
+            Watch
+          </span>
+        )}
+      </>
+    );
+  }
+
+  if (platformId === 'github') {
+    const rand = hashOf(item.title);
+    const shades = ['#DCF3E3', '#A7E3B8', '#5FC07A', vibe.accent];
+    return (
+      <div className="absolute inset-0 p-4 flex flex-col gap-3" style={{ backgroundColor: '#F6FBF7' }}>
+        <div className="flex items-center justify-between gap-2 t-meta">
+          <span className="truncate text-ink">
+            ANSHJOSHI1811 / <span style={{ color: vibe.accent }}>{item.title}</span>
+          </span>
+          {item.meta && <span className="shrink-0 text-muted">{item.meta}</span>}
+        </div>
+        <div className="grid grid-cols-10 gap-1.5 flex-1 content-start">
+          {Array.from({ length: 40 }, (_, i) => (
+            <span
+              key={i}
+              className="aspect-square rounded-[3px]"
+              style={{ backgroundColor: shades[Math.floor(rand() * shades.length)] }}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (platformId === 'linkedin') {
+    return (
+      <div className="absolute inset-0 p-4 flex flex-col gap-3" style={{ backgroundColor: '#F3F8FD' }}>
+        <div className="flex items-center gap-3">
+          <img src={PORTRAIT_IMAGE} alt="" className="w-11 h-11 object-cover object-top border-2" style={{ borderColor: vibe.accent }} />
+          <div className="min-w-0">
+            <p className="t-eyebrow text-ink">Ansh Joshi</p>
+            <p className="t-meta text-muted truncate">Development Engineer · Calsoft</p>
+          </div>
+        </div>
+        <p className="t-meta" style={{ color: vibe.accent }}>#cloud · #kubernetes · #aws</p>
+        <span className="h-2 w-11/12 bg-[#CFE2F6]" />
+        <span className="h-2 w-2/3 bg-[#E1EEFB]" />
+      </div>
+    );
+  }
+
+  if (platformId === 'reddit') {
+    return (
+      <div className="absolute inset-0 p-4 flex flex-col justify-between" style={{ backgroundColor: '#FFF7F2' }}>
+        <span className="inline-flex items-center gap-1.5 t-meta" style={{ color: vibe.accent }}>
+          <ArrowBigUp className="w-4 h-4" fill={vibe.accent} aria-hidden="true" />
+          Side Stand Stories
+        </span>
+        <p className="t-small font-semibold text-ink line-clamp-3">“{item.title}”</p>
+        <span
+          aria-hidden="true"
+          className="block h-1"
+          style={{ backgroundImage: `repeating-linear-gradient(90deg, ${vibe.accent} 0 18px, transparent 18px 32px)` }}
+        />
+      </div>
+    );
+  }
+
+  // Instagram (and any platform without an image): a reel-style frame
+  return (
+    <div
+      className="absolute inset-0 flex flex-col items-center justify-center gap-2"
+      style={{ backgroundImage: 'linear-gradient(140deg, #FEDA75 0%, #FA7E1E 30%, #D62976 60%, #962FBF 85%)' }}
+    >
+      <span className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center">
+        <Play className="w-5 h-5 ml-0.5" fill={vibe.accent} stroke={vibe.accent} aria-hidden="true" />
+      </span>
+      <span className="t-eyebrow text-white">Reel</span>
+    </div>
   );
 }

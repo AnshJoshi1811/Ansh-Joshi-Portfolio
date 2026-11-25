@@ -140,6 +140,36 @@ function processHighDefPixelSprite(
           }
         }
 
+        // Enclosed background pockets (e.g. the gap between his legs) can't be reached from
+        // the edges. Clear them only when they closely match the background AND are large,
+        // so small interior whites (teeth, lanyard, glints) stay solid.
+        const pocketSeen = new Uint8Array(size * size);
+        const minPocket = Math.round(size * size * 0.003);
+        for (let start = 0; start < size * size; start++) {
+          if (pocketSeen[start] || data[start * 4 + 3] === 0 || !isBgPixel(start, 22)) continue;
+          const pocket: number[] = [start];
+          pocketSeen[start] = 1;
+          for (let k = 0; k < pocket.length; k++) {
+            const curr = pocket[k];
+            const cx = curr % size;
+            const neighbours = [
+              cx > 0 ? curr - 1 : -1,
+              cx < size - 1 ? curr + 1 : -1,
+              curr - size,
+              curr + size,
+            ];
+            for (const n of neighbours) {
+              if (n < 0 || n >= size * size || pocketSeen[n]) continue;
+              if (data[n * 4 + 3] === 0 || !isBgPixel(n, 22)) continue;
+              pocketSeen[n] = 1;
+              pocket.push(n);
+            }
+          }
+          if (pocket.length >= minPocket) {
+            for (const idx of pocket) data[idx * 4 + 3] = 0;
+          }
+        }
+
         ctx.putImageData(imageData, 0, 0);
 
         // Crisp nearest-neighbor 3x upscale so every display renders razor-sharp 32-bit pixels
@@ -167,6 +197,11 @@ function processHighDefPixelSprite(
 
     img.onerror = () => reject(new Error(`Failed to load sprite: ${src}`));
   });
+}
+
+/** Process a sprite ahead of time so swapping costumes never flashes an empty frame. */
+export function preloadPixelSprite(spriteKey: PixelSpriteKey, pixelGrid = 136) {
+  return processHighDefPixelSprite(PIXEL_SPRITES[spriteKey], pixelGrid).catch(() => undefined);
 }
 
 export function TransparentPixelSprite({

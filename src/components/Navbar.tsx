@@ -35,7 +35,7 @@ export function Navbar({ activeSectionId }: NavbarProps) {
         <a
           href="#hero"
           onClick={handleLinkClick}
-          className="font-display text-base sm:text-lg font-extrabold tracking-tight text-ink whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-cobalt focus-visible:outline-offset-4"
+          className="font-display text-lg sm:text-xl font-extrabold tracking-[-0.025em] text-ink whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-cobalt focus-visible:outline-offset-4"
         >
           {SITE_META.owner}
         </a>

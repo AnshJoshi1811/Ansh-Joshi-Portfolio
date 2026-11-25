@@ -1,8 +1,10 @@
 interface SectionHeaderProps {
   index: string;
   title: string;
-  scopeNote: string;
+  scopeNote?: string;
   headingId?: string;
+  /** Hairline under the header (on by default) */
+  divider?: boolean;
 }
 
 /**
@@ -14,23 +16,30 @@ export function SectionHeader({
   title,
   scopeNote,
   headingId,
+  divider = true,
 }: SectionHeaderProps) {
   return (
-    <div className="mb-10 md:mb-12 flex flex-col gap-3 md:flex-row md:items-end md:justify-between border-b border-hairline pb-6">
+    <div
+      className={`mb-8 md:mb-10 flex flex-col items-center gap-3 text-center pb-6 ${
+        divider ? 'border-b border-hairline' : ''
+      }`}
+    >
       <div className="space-y-1.5">
-        <p className="font-mono text-xs font-medium text-cobalt tabular-nums">
+        <p className="t-eyebrow text-cobalt">
           {index}
         </p>
         <h2
           id={headingId}
-          className="font-display text-2xl sm:text-3xl lg:text-[36px] font-extrabold tracking-[-0.025em] text-ink leading-[1.15]"
+          className="t-h2 text-ink"
         >
           {title}
         </h2>
       </div>
-      <p className="text-sm sm:text-[15px] text-muted max-w-md md:text-right leading-relaxed">
-        {scopeNote}
-      </p>
+      {scopeNote && (
+        <p className="t-body text-muted max-w-xl">
+          {scopeNote}
+        </p>
+      )}
     </div>
   );
 }

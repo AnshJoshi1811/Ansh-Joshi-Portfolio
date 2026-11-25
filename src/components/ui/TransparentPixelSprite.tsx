@@ -8,20 +8,20 @@ interface TransparentPixelSpriteProps {
   alt?: string;
 }
 
-// In-memory cache so switching costumes or scrolling across sections is instant
+// In-memory cache so costume switches and hover peeks are instantaneous
 const PROCESSED_SPRITE_CACHE = new Map<string, string>();
 
 /**
- * Flood-fills connected exterior cream background pixels to true alpha=0
- * and downsamples to a crisp chunky pixel grid (default 64x64) so the character
- * stands completely FREE over any part of the page with sharp 16-bit edges
- * and zero boxed JPEG edges, while preserving interior whites (lanyard, sneakers, teeth).
+ * High-resolution 32-bit pixel sprite processor:
+ * Flood-fills connected exterior background pixels from all 4 edges to alpha=0,
+ * trims faint edge halos cleanly without touching interior whites (lanyard, teeth, sneakers),
+ * and upscales via crisp nearest-neighbor for ultra-sharp pixel clarity over any sunset/sky color.
  */
-function processTransparentChunkySprite(
+function processHighDefPixelSprite(
   src: string,
   pixelGrid: number,
 ): Promise<string> {
-  const cacheKey = `${src}::${pixelGrid}`;
+  const cacheKey = `${src}::hd::${pixelGrid}`;
   const cached = PROCESSED_SPRITE_CACHE.get(cacheKey);
   if (cached) {
     return Promise.resolve(cached);
@@ -45,9 +45,8 @@ function processTransparentChunkySprite(
           return;
         }
 
-        // Downsample cleanly onto the chunky pixel grid
         ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'medium';
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, size, size);
 
         const imageData = ctx.getImageData(0, 0, size, size);
@@ -89,7 +88,7 @@ function processTransparentChunkySprite(
         const enqueue = (x: number, y: number) => {
           const idx = y * size + x;
           if (visited[idx]) return;
-          if (!isBgPixel(idx, 36)) return;
+          if (!isBgPixel(idx, 38)) return;
           visited[idx] = 1;
           queue[tail++] = idx;
         };
@@ -116,33 +115,35 @@ function processTransparentChunkySprite(
           if (cy < size - 1) enqueue(cx, cy + 1);
         }
 
-        // Single fringe cleanup pass on faint cream halo pixels touching transparent exterior
-        const fringeToClear: number[] = [];
-        for (let y = 1; y < size - 1; y++) {
-          for (let x = 1; x < size - 1; x++) {
-            const idx = y * size + x;
-            if (data[idx * 4 + 3] === 0) continue;
+        // Two-pass anti-halo edge trim for ultra-clean silhouettes against colorful sky/sunset themes
+        for (let pass = 0; pass < 2; pass++) {
+          const tolerance = pass === 0 ? 64 : 46;
+          const fringeToClear: number[] = [];
+          for (let y = 1; y < size - 1; y++) {
+            for (let x = 1; x < size - 1; x++) {
+              const idx = y * size + x;
+              if (data[idx * 4 + 3] === 0) continue;
 
-            const touchesTransparent =
-              data[(idx - 1) * 4 + 3] === 0 ||
-              data[(idx + 1) * 4 + 3] === 0 ||
-              data[(idx - size) * 4 + 3] === 0 ||
-              data[(idx + size) * 4 + 3] === 0;
+              const touchesTransparent =
+                data[(idx - 1) * 4 + 3] === 0 ||
+                data[(idx + 1) * 4 + 3] === 0 ||
+                data[(idx - size) * 4 + 3] === 0 ||
+                data[(idx + size) * 4 + 3] === 0;
 
-            if (touchesTransparent && isBgPixel(idx, 56)) {
-              fringeToClear.push(idx);
+              if (touchesTransparent && isBgPixel(idx, tolerance)) {
+                fringeToClear.push(idx);
+              }
             }
           }
-        }
-        for (const idx of fringeToClear) {
-          data[idx * 4 + 3] = 0;
+          for (const idx of fringeToClear) {
+            data[idx * 4 + 3] = 0;
+          }
         }
 
-        // Tighten crop slightly around non-transparent pixels while keeping bottom grounded
         ctx.putImageData(imageData, 0, 0);
 
-        // Upscale crisp nearest-neighbor onto 256x256 PNG so every browser renders hard square pixels
-        const outSize = size * 4;
+        // Crisp nearest-neighbor 3x upscale so every display renders razor-sharp 32-bit pixels
+        const outSize = size * 3;
         const outCanvas = document.createElement('canvas');
         outCanvas.width = outSize;
         outCanvas.height = outSize;
@@ -170,12 +171,12 @@ function processTransparentChunkySprite(
 
 export function TransparentPixelSprite({
   spriteKey,
-  pixelGrid = 88,
+  pixelGrid = 136,
   className = 'w-36 h-36',
   alt,
 }: TransparentPixelSpriteProps) {
   const rawSrc = PIXEL_SPRITES[spriteKey];
-  const cacheKey = `${rawSrc}::${pixelGrid}`;
+  const cacheKey = `${rawSrc}::hd::${pixelGrid}`;
   const [processedSrc, setProcessedSrc] = useState<string | null>(
     () => PROCESSED_SPRITE_CACHE.get(cacheKey) ?? null,
   );
@@ -191,7 +192,7 @@ export function TransparentPixelSprite({
       return;
     }
 
-    processTransparentChunkySprite(rawSrc, pixelGrid)
+    processHighDefPixelSprite(rawSrc, pixelGrid)
       .then((url) => {
         if (active) setProcessedSrc(url);
       })
@@ -209,7 +210,7 @@ export function TransparentPixelSprite({
       <div
         className={`flex items-center justify-center font-mono text-[10px] text-muted ${className}`}
       >
-        [16-bit {spriteKey}]
+        [32-bit {spriteKey}]
       </div>
     );
   }
@@ -217,7 +218,7 @@ export function TransparentPixelSprite({
   return (
     <img
       src={processedSrc ?? rawSrc}
-      alt={alt ?? `Chunky 16-bit pixel character of Ansh Joshi (${spriteKey})`}
+      alt={alt ?? `Crisp pixel character of Ansh Joshi (${spriteKey})`}
       referrerPolicy="no-referrer"
       draggable={false}
       onError={() => setFailed(true)}

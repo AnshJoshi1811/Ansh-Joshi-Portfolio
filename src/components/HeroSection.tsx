@@ -1,299 +1,423 @@
-import { useEffect, useRef, useState } from 'react';
-import { ArrowDown, Download } from 'lucide-react';
-import { useReducedMotion, useScroll } from 'motion/react';
-import { PORTRAIT_IMAGE, SECTION_THEMES, SITE_META } from '../config/portfolioStructure';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowDownRight, ArrowUpRight, Download, RotateCcw } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
+import {
+  HERO_METRICS,
+  PORTRAIT_IMAGE,
+  SITE_META,
+} from '../config/portfolioStructure';
 import { downloadFormattedResumeHtml } from '../utils/resumeDownload';
+import { PeekOnHover } from './ui/PeekOnHover';
 import { PixelButton } from './ui/PixelButton';
-import { SectionReveal } from './ui/SectionReveal';
 
-// Heavy, crisp stepped pixelation blocks as you scroll past Hero
-const HERO_PIXEL_LEVELS = [52, 34, 22, 14, 9, 6];
+export interface JumpLaunchCoords {
+  startX: number;
+  startY: number;
+  scrollAfterJump?: boolean;
+}
 
 interface HeroSectionProps {
-  onBuddyReleaseChange: (released: boolean) => void;
+  buddyLanded: boolean;
+  onLaunchJump: (coords: JumpLaunchCoords) => void;
+  onResetBuddy: () => void;
   onNotify: (message: string) => void;
 }
 
+const PIXEL_BLOCK_STEPS = [1, 6, 12, 20, 30, 42] as const;
+
+/**
+ * Section 01 — Overall Software Engineer Hero.
+ * Clean architectural split with real portrait launchpad.
+ * Starting jump plays ONLY from here—with a crisp 220ms wind-up delay after
+ * pixel-block morphing before launching Pixel Ansh in a parabolic arc to the stage!
+ */
 export function HeroSection({
-  onBuddyReleaseChange,
+  buddyLanded,
+  onLaunchJump,
+  onResetBuddy,
   onNotify,
 }: HeroSectionProps) {
   const prefersReducedMotion = useReducedMotion();
-  const heroRef = useRef<HTMLElement | null>(null);
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const portraitBoxRef = useRef<HTMLButtonElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const imgRef = useRef<HTMLImageElement | null>(null);
-  const releasedRef = useRef(false);
+  const loadedImgRef = useRef<HTMLImageElement | null>(null);
+  const launchedRef = useRef(false);
+  const windingUpRef = useRef(false);
+  const manualOverrideRef = useRef(false);
+  const morphTimersRef = useRef<number[]>([]);
 
-  const [photoLoaded, setPhotoLoaded] = useState(false);
-  const [imageFailed, setImageFailed] = useState(false);
-  const [scrollRatio, setScrollRatio] = useState(0);
+  const [pixelStepIdx, setPixelStepIdx] = useState(0);
+  const [isWindingUp, setIsWindingUp] = useState(false);
+  const [hasLeaped, setHasLeaped] = useState(false);
+  const [imageReady, setImageReady] = useState(false);
 
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ['start start', 'end start'],
-  });
-
-  useEffect(() => {
-    const img = new Image();
-    img.referrerPolicy = 'no-referrer';
-    img.src = PORTRAIT_IMAGE;
-    img.onload = () => {
-      imgRef.current = img;
-      setPhotoLoaded(true);
-    };
-    img.onerror = () => {
-      setImageFailed(true);
-    };
+  const clearMorphTimers = useCallback(() => {
+    morphTimersRef.current.forEach((id) => window.clearTimeout(id));
+    morphTimersRef.current = [];
+    windingUpRef.current = false;
+    setIsWindingUp(false);
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = scrollYProgress.on('change', (latest) => {
-      const clamped = Math.max(0, Math.min(1, latest));
-      setScrollRatio(clamped);
-
-      const shouldRelease = clamped >= 0.36;
-      if (shouldRelease !== releasedRef.current) {
-        releasedRef.current = shouldRelease;
-        onBuddyReleaseChange(shouldRelease);
-      }
-    });
-    return () => unsubscribe();
-  }, [scrollYProgress, onBuddyReleaseChange]);
-
-  const activeGridSize = (() => {
-    if (prefersReducedMotion || scrollRatio <= 0.04) return null;
-    const normalized = Math.min(1, (scrollRatio - 0.04) / 0.42);
-    const idx = Math.min(
-      HERO_PIXEL_LEVELS.length - 1,
-      Math.floor(normalized * HERO_PIXEL_LEVELS.length),
-    );
-    return HERO_PIXEL_LEVELS[idx];
-  })();
-
-  useEffect(() => {
+  // Render real photograph with live pixel-block morphing
+  const renderPortraitCanvas = useCallback((stepIndex: number) => {
     const canvas = canvasRef.current;
-    const img = imgRef.current;
-    if (!canvas || !img || !photoLoaded) return;
+    const img = loadedImgRef.current;
+    if (!canvas || !img) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const targetW = 480;
-    const targetH = 600;
-    if (canvas.width !== targetW || canvas.height !== targetH) {
-      canvas.width = targetW;
-      canvas.height = targetH;
-    }
+    const width = canvas.width;
+    const height = canvas.height;
+    const blockSize = PIXEL_BLOCK_STEPS[stepIndex] ?? 1;
 
-    const srcW = img.naturalWidth;
-    const srcH = img.naturalHeight;
-    const targetAspect = targetW / targetH;
-    const srcAspect = srcW / srcH;
+    ctx.clearRect(0, 0, width, height);
 
-    let sx = 0;
-    let sy = 0;
-    let sw = srcW;
-    let sh = srcH;
-
-    if (srcAspect > targetAspect) {
-      sw = srcH * targetAspect;
-      sx = (srcW - sw) / 2;
-    } else {
-      sh = srcW / targetAspect;
-      sy = 0;
-    }
-
-    ctx.clearRect(0, 0, targetW, targetH);
-
-    if (activeGridSize === null) {
+    if (blockSize <= 1) {
       ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
       return;
     }
 
-    const offW = activeGridSize;
-    const offH = Math.max(6, Math.round(activeGridSize * (targetH / targetW)));
+    const tinyW = Math.max(8, Math.round(width / blockSize));
+    const tinyH = Math.max(8, Math.round(height / blockSize));
+
     const offscreen = document.createElement('canvas');
-    offscreen.width = offW;
-    offscreen.height = offH;
+    offscreen.width = tinyW;
+    offscreen.height = tinyH;
     const offCtx = offscreen.getContext('2d');
     if (!offCtx) return;
 
     offCtx.imageSmoothingEnabled = true;
-    offCtx.drawImage(img, sx, sy, sw, sh, 0, 0, offW, offH);
+    offCtx.drawImage(img, 0, 0, tinyW, tinyH);
 
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(offscreen, 0, 0, offW, offH, 0, 0, targetW, targetH);
-  }, [photoLoaded, activeGridSize]);
+    ctx.drawImage(offscreen, 0, 0, tinyW, tinyH, 0, 0, width, height);
+  }, []);
 
-  const handoffProgress =
-    prefersReducedMotion || scrollRatio < 0.3
-      ? 0
-      : Math.min(1, (scrollRatio - 0.3) / 0.32);
-  const portraitDropY = handoffProgress * 32;
-  const portraitOpacity = 1 - handoffProgress * 0.55;
-  const isPixelating = activeGridSize !== null;
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.referrerPolicy = 'no-referrer';
+    img.src = PORTRAIT_IMAGE;
+
+    img.onload = () => {
+      loadedImgRef.current = img;
+      setImageReady(true);
+      renderPortraitCanvas(pixelStepIdx);
+    };
+  }, [renderPortraitCanvas, pixelStepIdx]);
+
+  useEffect(() => {
+    if (imageReady) {
+      renderPortraitCanvas(pixelStepIdx);
+    }
+  }, [pixelStepIdx, imageReady, renderPortraitCanvas]);
+
+  useEffect(() => {
+    return () => clearMorphTimers();
+  }, [clearMorphTimers]);
+
+  // Deliberate 220ms wind-up delay before launching the starting parabolic jump
+  const scheduleDelayedLaunch = useCallback(
+    (scrollAfterJump = false) => {
+      if (launchedRef.current || windingUpRef.current) return;
+
+      const fireLaunch = () => {
+        const rect = portraitBoxRef.current?.getBoundingClientRect();
+        const startX = rect
+          ? rect.left + rect.width * 0.5
+          : Math.min(window.innerWidth * 0.72, window.innerWidth - 160);
+        const startY = rect ? rect.top + rect.height * 0.45 : 260;
+
+        windingUpRef.current = false;
+        setIsWindingUp(false);
+        launchedRef.current = true;
+        setHasLeaped(true);
+        onLaunchJump({ startX, startY, scrollAfterJump });
+      };
+
+      if (prefersReducedMotion) {
+        fireLaunch();
+        return;
+      }
+
+      windingUpRef.current = true;
+      setIsWindingUp(true);
+      const delayId = window.setTimeout(fireLaunch, 220);
+      morphTimersRef.current.push(delayId);
+    },
+    [onLaunchJump, prefersReducedMotion],
+  );
+
+  // Trigger rapid pixel morph -> 220ms wind-up crouch -> parabolic jump out of portrait
+  const triggerInteractiveJump = useCallback(
+    (scrollAfterJump = false) => {
+      clearMorphTimers();
+      manualOverrideRef.current = true;
+      launchedRef.current = false;
+      setHasLeaped(false);
+      onResetBuddy();
+
+      if (prefersReducedMotion) {
+        setPixelStepIdx(PIXEL_BLOCK_STEPS.length - 1);
+        scheduleDelayedLaunch(scrollAfterJump);
+        return;
+      }
+
+      setPixelStepIdx(0);
+      const steps = [1, 2, 4, 5];
+      steps.forEach((step, idx) => {
+        const timerId = window.setTimeout(() => {
+          setPixelStepIdx(step);
+          if (idx === steps.length - 1) {
+            scheduleDelayedLaunch(scrollAfterJump);
+          }
+        }, (idx + 1) * 75);
+        morphTimersRef.current.push(timerId);
+      });
+    },
+    [clearMorphTimers, onResetBuddy, prefersReducedMotion, scheduleDelayedLaunch],
+  );
+
+  // Scroll-driven pixelation & automatic starting jump with wind-up delay
+  useEffect(() => {
+    let rafId = 0;
+
+    const updateOnScroll = () => {
+      rafId = 0;
+      const el = sectionRef.current;
+      if (!el) return;
+
+      const rect = el.getBoundingClientRect();
+      const scrollDistance = Math.max(0, -rect.top);
+      const heroHeight = Math.max(340, rect.height);
+      const progress = Math.min(1, scrollDistance / (heroHeight * 0.5));
+
+      if (progress < 0.04) {
+        manualOverrideRef.current = false;
+      }
+
+      if (manualOverrideRef.current) return;
+
+      const nextStep = Math.min(
+        PIXEL_BLOCK_STEPS.length - 1,
+        Math.floor(progress * PIXEL_BLOCK_STEPS.length),
+      );
+      setPixelStepIdx(nextStep);
+
+      if (progress >= 0.36 && !launchedRef.current && !windingUpRef.current) {
+        scheduleDelayedLaunch(false);
+      } else if (progress < 0.1 && (launchedRef.current || windingUpRef.current)) {
+        clearMorphTimers();
+        launchedRef.current = false;
+        setHasLeaped(false);
+        onResetBuddy();
+      }
+    };
+
+    const onScroll = () => {
+      if (rafId === 0) {
+        rafId = window.requestAnimationFrame(updateOnScroll);
+      }
+    };
+
+    updateOnScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (rafId !== 0) window.cancelAnimationFrame(rafId);
+    };
+  }, [clearMorphTimers, onResetBuddy, scheduleDelayedLaunch]);
+
+  const handleDownloadResume = () => {
+    downloadFormattedResumeHtml();
+    onNotify('Resume downloaded! Open the HTML file and Print to Save as PDF anytime.');
+  };
 
   return (
     <section
-      ref={heroRef}
       id="hero"
+      ref={sectionRef}
       aria-labelledby="hero-heading"
-      style={{ backgroundColor: SECTION_THEMES.hero }}
-      className="pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pt-20 lg:pb-24"
+      className="relative bg-canvas blueprint-dots pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pt-20 lg:pb-24"
     >
-      <div className="mx-auto max-w-[1160px] px-5 sm:px-8">
-        <SectionReveal>
-          <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch gap-10 lg:gap-12">
-            {/* Left column: Real Hero Introduction */}
-            <div className="lg:col-span-7 flex flex-col justify-between py-1 sm:py-3">
-              <div className="space-y-6 sm:space-y-7">
-                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-mono text-muted">
-                  <span>{SITE_META.location}</span>
-                  <span aria-hidden="true">·</span>
-                  <span>Calsoft</span>
-                  <span aria-hidden="true">·</span>
-                  <span className="text-ink font-medium">{SITE_META.award}</span>
-                </div>
+      <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:pl-[280px] xl:pl-[324px]">
+        {/* Two-Column Authoritative Split */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-stretch">
+          {/* LEFT COLUMN (7 cols): Overall Software Engineer Identity & Actions */}
+          <div className="lg:col-span-7 flex flex-col justify-center space-y-6">
+            <div className="space-y-4">
+              <p className="font-mono text-xs sm:text-[13px] font-medium text-cobalt">
+                {SITE_META.role} · {SITE_META.location}
+              </p>
 
-                <div className="space-y-3">
-                  <h1
-                    id="hero-heading"
-                    className="font-serif text-4xl sm:text-5xl lg:text-[3.75rem] font-medium tracking-tight text-ink leading-[1.06]"
-                  >
-                    {SITE_META.owner}
-                  </h1>
-                  <p className="font-serif italic text-xl sm:text-2xl text-lavender leading-snug">
-                    {SITE_META.role}
-                  </p>
-                </div>
+              <h1
+                id="hero-heading"
+                className="font-display text-4xl sm:text-5xl lg:text-[58px] font-extrabold tracking-[-0.03em] leading-[1.06] text-ink"
+              >
+                {SITE_META.owner}
+              </h1>
 
-                <p className="max-w-xl text-[15px] sm:text-base text-muted leading-[1.7] border-t border-b border-hairline py-6">
-                  {SITE_META.summary}
-                </p>
+              <p className="text-base sm:text-lg text-muted leading-relaxed max-w-[54ch]">
+                {SITE_META.heroLead}
+              </p>
 
-                {/* Crisp unboxed impact ledger from real resume */}
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs sm:text-sm text-ink">
-                  <span className="font-mono tabular-nums">
-                    <strong className="font-semibold">2.5 yrs</strong> Go &amp; Cloud
-                  </span>
-                  <span aria-hidden="true" className="text-hairline-strong">/</span>
-                  <span className="font-mono tabular-nums">
-                    <strong className="font-semibold">15+</strong> K8s Microservices
-                  </span>
-                  <span aria-hidden="true" className="text-hairline-strong">/</span>
-                  <span className="font-mono tabular-nums">
-                    <strong className="font-semibold">22 → 4</strong> Jenkins Pipelines
-                  </span>
-                  <span aria-hidden="true" className="text-hairline-strong">/</span>
-                  <span className="font-mono tabular-nums">
-                    <strong className="font-semibold">-35%</strong> Query Timeouts
-                  </span>
-                </div>
-              </div>
-
-              {/* Stepped-pixel CTA row */}
-              <div className="pt-8 sm:pt-10 flex flex-wrap items-center gap-4">
-                <PixelButton href="#social-platforms" variant="lavender" size="lg">
-                  <span>Drop Main Character</span>
-                  <ArrowDown className="w-4 h-4" aria-hidden="true" />
-                </PixelButton>
-                <PixelButton
-                  variant="yellow"
-                  size="lg"
-                  onClick={() => {
-                    downloadFormattedResumeHtml();
-                    onNotify('Resume downloaded (open & Print → Save as PDF anytime).');
-                  }}
-                >
-                  <Download className="w-4 h-4" aria-hidden="true" />
-                  <span>Download Resume</span>
-                </PixelButton>
-              </div>
+              <p className="text-sm text-subtle leading-relaxed max-w-[56ch]">
+                Building at <strong className="text-ink font-semibold">Calsoft</strong> ·{' '}
+                <span className="text-amber font-medium">{SITE_META.award}</span> · AWS Certified Solutions Architect
+              </p>
             </div>
 
-            {/* Right column: Scroll-pixelating Original Portrait */}
-            <div className="lg:col-span-5 flex flex-col">
-              <div
-                style={{
-                  transform: `translateY(${portraitDropY}px)`,
-                  opacity: portraitOpacity,
-                }}
-                className={`flex-1 min-h-[400px] sm:min-h-[470px] lg:min-h-[510px] bg-surface p-4 sm:p-5 flex flex-col justify-between transition-[box-shadow,border-color] duration-150 ${
-                  isPixelating ? 'pixel-stage-frame' : 'border border-hairline'
-                }`}
+            {/* Primary & Secondary Actions */}
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <PixelButton
+                onClick={() => triggerInteractiveJump(true)}
+                variant="primary"
+                size="lg"
               >
-                <div className="flex items-center justify-between font-mono text-xs text-muted pb-3 border-b border-hairline">
-                  <span>
-                    {isPixelating ? 'Pixelating Portrait…' : 'Original Portrait'}
-                  </span>
-                  <span className="tabular-nums text-ink">
-                    {activeGridSize !== null
-                      ? `${activeGridSize}×${Math.round(activeGridSize * 1.25)} grid`
-                      : 'Ansh Joshi'}
-                  </span>
-                </div>
+                <span>{buddyLanded ? 'Replay Jump & Explore' : 'Watch Pixel Ansh Jump'}</span>
+                <ArrowDownRight className="w-4 h-4" aria-hidden="true" />
+              </PixelButton>
 
-                <div className="relative flex-1 my-4 bg-recessed border border-hairline/80 overflow-hidden min-h-[320px] sm:min-h-[370px]">
-                  {!imageFailed ? (
-                    <>
-                      <canvas
-                        ref={canvasRef}
-                        aria-label="Portrait of Ansh Joshi that pixelates heavily as you scroll down"
-                        className="absolute inset-0 w-full h-full object-cover pixel-sprite-img"
-                      />
-                      {!photoLoaded && (
-                        <img
-                          src={PORTRAIT_IMAGE}
-                          alt="Portrait of Ansh Joshi"
-                          referrerPolicy="no-referrer"
-                          onError={() => setImageFailed(true)}
-                          className="absolute inset-0 w-full h-full object-cover object-top"
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-                      <p className="font-serif text-lg text-ink">
-                        Portrait Unavailable
+              <PixelButton
+                onClick={handleDownloadResume}
+                variant="surface"
+                size="lg"
+              >
+                <Download className="w-4 h-4 text-cobalt" aria-hidden="true" />
+                <span>Download Resume</span>
+              </PixelButton>
+            </div>
+
+            {/* Quiet Unboxed Text Links */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-2 text-sm font-medium text-muted">
+              <a
+                href="https://github.com/ANSHJOSHI1811"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 hover:text-ink transition-colors"
+              >
+                <span>GitHub</span>
+                <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+              </a>
+              <span aria-hidden="true" className="text-hairline-strong">·</span>
+              <a
+                href="https://linkedin.com/in/anshjoshi1811"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 hover:text-ink transition-colors"
+              >
+                <span>LinkedIn</span>
+                <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+              </a>
+              <span aria-hidden="true" className="text-hairline-strong">·</span>
+              <a
+                href="https://anshjoshi1811.github.io/SystemDesign/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 hover:text-cobalt transition-colors"
+              >
+                <span>SystemDesign Guide</span>
+                <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+              </a>
+              <span aria-hidden="true" className="text-hairline-strong">·</span>
+              <a
+                href={`mailto:${SITE_META.email}`}
+                className="hover:text-ink transition-colors"
+              >
+                {SITE_META.email}
+              </a>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN (5 cols): Portrait Launchpad with Nose-Only Hover Sneak */}
+          <div className="lg:col-span-5 flex flex-col justify-center">
+            <PeekOnHover align="right" size="md">
+              <div className="bg-surface border border-hairline rounded-2xl p-3.5 shadow-[0_14px_34px_-22px_rgba(15,23,42,0.18)]">
+                <button
+                  ref={portraitBoxRef}
+                  type="button"
+                  onClick={() => triggerInteractiveJump(false)}
+                  aria-label="Click portrait to morph into Pixel Ansh and launch the starting jump"
+                  className="group relative block w-full aspect-[4/4.3] rounded-xl overflow-hidden bg-recessed cursor-pointer focus-visible:outline-2 focus-visible:outline-cobalt focus-visible:outline-offset-2"
+                >
+                  <canvas
+                    ref={canvasRef}
+                    width={420}
+                    height={452}
+                    aria-label="Portrait photograph of Ansh Joshi"
+                    className={`pixel-sprite-img block w-full h-full object-cover transition-[opacity,filter,transform] duration-200 ${
+                      hasLeaped
+                        ? 'opacity-30 grayscale-[35%] scale-[0.98]'
+                        : isWindingUp
+                          ? 'scale-y-[0.92] scale-x-[1.04] translate-y-2'
+                          : 'opacity-100 group-hover:scale-[1.015]'
+                    }`}
+                  />
+
+                  {!imageReady && (
+                    <img
+                      src={PORTRAIT_IMAGE}
+                      alt="Ansh Joshi"
+                      referrerPolicy="no-referrer"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  )}
+
+                  {hasLeaped && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-canvas/55 backdrop-blur-[1px]">
+                      <p className="font-display text-sm font-bold text-ink">
+                        Pixel Ansh jumped out of frame
                       </p>
-                      <p className="mt-1.5 text-xs text-muted max-w-[26ch] leading-relaxed">
-                        Unable to load the original portrait asset.
+                      <p className="font-mono text-xs text-muted mt-1">
+                        Click Pixel Ansh anytime to make him jump
                       </p>
+                      <span className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-surface border border-hairline-strong px-3 py-1.5 text-xs font-semibold text-cobalt shadow-xs">
+                        <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Replay jump</span>
+                      </span>
                     </div>
                   )}
-                </div>
+                </button>
 
-                <div className="flex items-center justify-between font-mono text-[11px] text-muted pt-3 border-t border-hairline">
+                <div className="pt-3 px-1 flex items-center justify-between gap-2 font-mono text-[11px] text-muted">
                   <span>
-                    {scrollRatio >= 0.36
-                      ? 'Main character dropped on left ↓'
-                      : isPixelating
-                        ? 'Keep scrolling to drop on left'
-                        : 'Scroll down to pixelate & drop'}
+                    {hasLeaped
+                      ? 'Mascot active along the page'
+                      : isWindingUp
+                        ? 'Crouching to leap…'
+                        : pixelStepIdx > 0
+                          ? `Morphing to 32-bit · ${Math.round((pixelStepIdx / (PIXEL_BLOCK_STEPS.length - 1)) * 100)}%`
+                          : 'Click portrait or scroll to launch'}
                   </span>
-                  <span className="tabular-nums">
-                    {Math.round(Math.min(1, scrollRatio / 0.44) * 100)}%
-                  </span>
+                  <span className="text-cobalt font-medium">{SITE_META.domain}</span>
                 </div>
               </div>
-            </div>
+            </PeekOnHover>
           </div>
+        </div>
 
-          {/* Dedicated scroll handoff strip */}
-          <div className="mt-14 sm:mt-16 pt-6 border-t border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <p className="text-xs sm:text-sm text-muted">
-              Scroll past the portrait to pixelate it down to chunky 6px blocks—your 16-bit main character drops onto the left stage and guides you across every section.
-            </p>
-            <a
-              href="#social-platforms"
-              className="inline-flex items-center gap-2 text-sm font-medium text-ink hover:text-lavender transition-colors whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-lavender focus-visible:outline-offset-4"
-            >
-              <span>02. Social &amp; Featured Work</span>
-              <ArrowDown className="w-4 h-4" aria-hidden="true" />
-            </a>
+        {/* Full-Width Proof Metrics Strip with Sneaking Ansh Hover */}
+        <PeekOnHover align="right" size="sm" className="mt-12 sm:mt-14">
+          <div className="bg-surface border border-hairline rounded-2xl grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-hairline">
+            {HERO_METRICS.map((metric) => (
+              <div key={metric.label} className="px-6 py-5 flex flex-col gap-1">
+                <span className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-ink tabular-nums">
+                  {metric.value}
+                </span>
+                <span className="text-xs sm:text-sm text-muted">
+                  {metric.label}
+                </span>
+              </div>
+            ))}
           </div>
-        </SectionReveal>
+        </PeekOnHover>
       </div>
     </section>
   );

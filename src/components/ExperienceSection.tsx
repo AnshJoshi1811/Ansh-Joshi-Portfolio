@@ -1,190 +1,105 @@
-import { Award, MapPin } from 'lucide-react';
+import { Award } from 'lucide-react';
 import {
-  SECTION_THEMES,
   SITE_META,
   WORK_EXPERIENCE,
   type ExperienceEntry,
 } from '../config/portfolioStructure';
+import { PeekOnHover } from './ui/PeekOnHover';
 import { SectionHeader } from './ui/SectionHeader';
 import { SectionReveal } from './ui/SectionReveal';
-import { TransparentPixelSprite } from './ui/TransparentPixelSprite';
-
-interface ExperienceSectionProps {
-  activeExperienceId: 'engineer' | 'intern';
-  onSelectExperience: (id: 'engineer' | 'intern') => void;
-}
 
 /**
- * Section 04 — Experience (Warm Buttercream Sand Theme).
- * Features Ansh's progression at Calsoft:
- * - Level 01 (Intern): Small 16-bit Ansh with oversized backpack & books
- * - Level 02 (Development Engineer in Cloud): Bigger, leveled-up Cloud Engineer with Star pin
- * Hovering or selecting either role scales the free left-stage Main Character in real time.
+ * Section 04 — Work Experience (Ultra-Minimal Rajan-Style Editorial Layout).
+ * Clean 2-column rows separated by 1px hairlines:
+ * Left column holds tenure, company & location; right column holds role, summary,
+ * project headings, and exact verified Calsoft resume bullets.
+ * Zero mascot scale buttons, zero right-side sprites, zero intern/full-time scaling clutter.
  */
-export function ExperienceSection({
-  activeExperienceId,
-  onSelectExperience,
-}: ExperienceSectionProps) {
+export function ExperienceSection() {
   return (
     <section
       id="experience"
       aria-labelledby="experience-heading"
-      style={{ backgroundColor: SECTION_THEMES.experience }}
-      className="py-16 sm:py-20 lg:py-24"
+      className="border-t border-hairline bg-canvas py-16 sm:py-20 lg:py-24"
     >
-      <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:pl-[276px] xl:pl-[316px]">
+      <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:pl-[280px] xl:pl-[324px]">
         <SectionReveal>
           <SectionHeader
             index="04"
-            title="Experience"
+            title="Work experience"
             headingId="experience-heading"
-            scopeNote="From backend intern shipping Go pricing pipelines to cloud development engineer running 15+ Kubernetes microservices. Hover or click a role to watch 16-bit Ansh grow."
+            scopeNote="Where I've shipped production backend systems, cloud automation, and Kubernetes infrastructure."
           />
 
-          {/* Interactive Character Growth Switcher Strip */}
-          <div className="mb-8 flex flex-wrap items-center justify-between gap-4 border border-hairline bg-surface px-5 py-4">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-ink">
-              <Award className="w-4 h-4 text-lavender shrink-0" aria-hidden="true" />
-              <span className="font-semibold">{SITE_META.award}</span>
-              <span aria-hidden="true" className="text-muted">·</span>
-              <span className="text-muted">Calsoft (April 2024 – Present)</span>
-            </div>
+          {/* Clean Minimal Hairline Rows (Rajan-inspired editorial restraint) */}
+          <div className="divide-y divide-hairline border-y border-hairline">
+            {WORK_EXPERIENCE.map((entry: ExperienceEntry) => (
+              <PeekOnHover key={entry.id} align="right" size="sm">
+                <article className="py-10 sm:py-12 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 transition-colors hover:bg-surface/65 px-2 sm:px-4 -mx-2 sm:-mx-4 rounded-xl">
+                  {/* Left Column (4 cols): Tenure, Company & Recognition */}
+                  <div className="md:col-span-4 space-y-2">
+                    <p className="font-mono text-xs sm:text-[13px] font-medium text-cobalt tabular-nums">
+                      {entry.period}
+                    </p>
+                    <p className="font-display text-lg font-bold text-ink">
+                      {entry.company}
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted">
+                      {entry.location}
+                    </p>
 
-            <div
-              role="group"
-              aria-label="Preview character growth stage"
-              className="flex items-center gap-2"
-            >
-              <button
-                type="button"
-                onClick={() => onSelectExperience('intern')}
-                className={`px-3 py-1.5 font-mono text-xs border transition-colors cursor-pointer ${
-                  activeExperienceId === 'intern'
-                    ? 'bg-yellow-soft border-ink text-ink font-medium shadow-[2px_2px_0_0_#252525]'
-                    : 'bg-canvas border-hairline text-muted hover:text-ink'
-                }`}
-              >
-                LVL 01 · Mini Intern
-              </button>
-              <button
-                type="button"
-                onClick={() => onSelectExperience('engineer')}
-                className={`px-3 py-1.5 font-mono text-xs border transition-colors cursor-pointer ${
-                  activeExperienceId === 'engineer'
-                    ? 'bg-lavender-soft border-ink text-ink font-medium shadow-[2px_2px_0_0_#252525]'
-                    : 'bg-canvas border-hairline text-muted hover:text-ink'
-                }`}
-              >
-                LVL 02 · Big Cloud Engineer
-              </button>
-            </div>
-          </div>
+                    {entry.id === 'engineer' && (
+                      <p className="inline-flex items-center gap-1.5 pt-2 text-xs font-medium text-amber">
+                        <Award className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                        <span>{SITE_META.award}</span>
+                      </p>
+                    )}
+                  </div>
 
-          {/* Two Real Experience Entries with Unmistakable Small vs Big Character Scale */}
-          <div className="space-y-6">
-            {WORK_EXPERIENCE.map((entry: ExperienceEntry) => {
-              const isActive = activeExperienceId === entry.id;
-              const isEngineer = entry.id === 'engineer';
-
-              return (
-                <article
-                  key={entry.id}
-                  onMouseEnter={() => onSelectExperience(entry.id)}
-                  onClick={() => onSelectExperience(entry.id)}
-                  className={`bg-surface border transition-[border-color,box-shadow] duration-150 cursor-pointer ${
-                    isActive
-                      ? 'border-ink shadow-[4px_4px_0_0_#252525]'
-                      : 'border-hairline hover:border-ink/50'
-                  }`}
-                >
-                  {/* Role Header + Visual Size Evolution Comparison */}
-                  <div className="p-6 sm:p-8 border-b border-hairline flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-                    <div className="space-y-2.5">
-                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-xs text-muted">
-                        <span className="text-ink font-medium tabular-nums">
-                          {entry.index}
-                        </span>
-                        <span aria-hidden="true">·</span>
-                        <span className={isEngineer ? 'text-lavender font-medium' : 'text-ink/80'}>
-                          {entry.levelLabel}
-                        </span>
-                        <span aria-hidden="true">·</span>
-                        <span>{entry.period}</span>
-                      </div>
-
-                      <h3 className="font-serif text-2xl sm:text-3xl font-medium text-ink leading-tight">
+                  {/* Right Column (8 cols): Role Title, Summary & Verified Impact Bullets */}
+                  <div className="md:col-span-8 space-y-6">
+                    <div className="space-y-2">
+                      <h3 className="font-display text-xl sm:text-2xl font-extrabold tracking-tight text-ink leading-tight">
                         {entry.role}
                       </h3>
-
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-                        <span className="font-medium text-ink">{entry.company}</span>
-                        <span aria-hidden="true">·</span>
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
-                          {entry.location}
-                        </span>
-                      </div>
+                      <p className="text-sm sm:text-[15px] text-muted leading-relaxed">
+                        {entry.summary}
+                      </p>
                     </div>
 
-                    {/* Free, borderless Small Intern vs Bigger Cloud Engineer comparison right beside the role */}
-                    <div className="flex items-end gap-3 self-start sm:self-end shrink-0">
-                      <div className="text-right hidden sm:block pb-1">
-                        <span className="block font-mono text-[10px] text-muted">
-                          Sprite Scale
-                        </span>
-                        <span className="block font-mono text-xs font-medium text-ink">
-                          {entry.characterScaleLabel}
-                        </span>
-                      </div>
-                      <div className="flex items-end justify-center h-28 w-28">
-                        <TransparentPixelSprite
-                          spriteKey={entry.spriteKey}
-                          pixelGrid={88}
-                          className={
-                            isEngineer
-                              ? 'w-28 h-28 drop-shadow-[0_4px_0_rgba(37,37,37,0.12)]'
-                              : 'w-[72px] h-[72px] drop-shadow-[0_4px_0_rgba(37,37,37,0.12)]'
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
+                    <div className="space-y-6">
+                      {entry.projects.map((project) => (
+                        <div key={project.name} className="space-y-2.5">
+                          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1.5">
+                            <h4 className="font-display text-sm sm:text-base font-bold text-ink">
+                              {project.name}
+                            </h4>
+                            <span className="font-mono text-[11px] text-subtle">
+                              {project.stack}
+                            </span>
+                          </div>
 
-                  {/* Real Project Work & Impact Bullets */}
-                  <div className="p-6 sm:p-8 divide-y divide-hairline space-y-6">
-                    {entry.projects.map((project, pIdx) => (
-                      <div
-                        key={project.name}
-                        className={pIdx > 0 ? 'pt-6 space-y-3.5' : 'space-y-3.5'}
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
-                          <h4 className="font-serif text-lg sm:text-xl font-medium text-ink">
-                            {project.name}
-                          </h4>
-                          <span className="font-mono text-xs text-muted">
-                            {project.stack}
-                          </span>
+                          <ul className="space-y-2">
+                            {project.bullets.map((bullet) => (
+                              <li
+                                key={bullet}
+                                className="flex items-start gap-2.5 text-sm text-ink/85 leading-relaxed"
+                              >
+                                <span
+                                  aria-hidden="true"
+                                  className="mt-2 w-1.5 h-1.5 rounded-full bg-cobalt/75 shrink-0"
+                                />
+                                <span>{bullet}</span>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
-
-                        <ul className="space-y-2.5">
-                          {project.bullets.map((bullet, bIdx) => (
-                            <li
-                              key={bullet}
-                              className="flex items-start gap-3 text-sm sm:text-[15px] text-ink/90 leading-relaxed"
-                            >
-                              <span className="font-mono text-[11px] text-lavender pt-1 tabular-nums shrink-0">
-                                0{bIdx + 1}
-                              </span>
-                              <span>{bullet}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </article>
-              );
-            })}
+              </PeekOnHover>
+            ))}
           </div>
         </SectionReveal>
       </div>

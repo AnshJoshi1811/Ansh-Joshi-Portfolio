@@ -1,36 +1,33 @@
 @import "tailwindcss";
 
 @theme {
-  --font-serif: "Fraunces", Georgia, Cambria, "Times New Roman", serif;
+  --font-display: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --color-canvas: #F6F3EA;
-  --color-surface: #FBF9F4;
-  --color-recessed: #EFECE2;
-  --color-ink: #252525;
-  --color-muted: #635F57;
-  --color-hairline: #DDD8CE;
-  --color-hairline-strong: #C9C3B7;
-  --color-lavender: #9176BE;
-  --color-lavender-soft: #EDE7F6;
-  --color-yellow: #E5C67D;
-  --color-yellow-soft: #F7EFE0;
-  --color-sage: #A3B6A6;
-  --color-sage-soft: #E9EFEA;
+  /* Unified Architectural Light Identity */
+  --color-canvas: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-recessed: #F1F5F9;
+  --color-ink: #0F172A;
+  --color-muted: #475569;
+  --color-subtle: #64748B;
+  --color-hairline: #E2E8F0;
+  --color-hairline-strong: #CBD5E1;
+
+  --color-cobalt: #2563EB;
+  --color-cobalt-dark: #1D4ED8;
+  --color-cobalt-soft: #EFF6FF;
+  --color-amber: #D97706;
+  --color-amber-soft: #FFFBEB;
 }
 
 :root {
-  --bg-canvas: #F6F3EA;
-  --bg-surface: #FBF9F4;
-  --bg-recessed: #EFECE2;
-  --ink-primary: #252525;
-  --ink-muted: #635F57;
-  --border-subtle: #DDD8CE;
-  --border-strong: #C9C3B7;
-  --accent-lavender: #9176BE;
-  --accent-yellow: #E5C67D;
-  --accent-sage: #A3B6A6;
+  --bg-canvas: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --ink-primary: #0F172A;
+  --ink-muted: #475569;
+  --accent-cobalt: #2563EB;
   color-scheme: light;
 }
 
@@ -55,98 +52,60 @@
   h1,
   h2,
   h3 {
-    font-family: var(--font-serif);
+    font-family: var(--font-display);
     text-wrap: balance;
   }
 
   ::selection {
-    background-color: #E5C67D;
-    color: #252525;
+    background-color: #DBEAFE;
+    color: #0F172A;
   }
 }
 
-/* Restrained 16-bit stepped pixel button — ONLY applied to interactive buttons */
-.pixel-btn {
+/* Subtle architectural drafting dot field */
+.blueprint-dots {
+  background-image: radial-gradient(rgba(15, 23, 42, 0.08) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Sleek professional button */
+.pro-btn {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 0;
-  margin: 2px 5px 5px 2px;
+  border-radius: 10px;
   font-family: var(--font-sans);
   font-weight: 600;
   white-space: nowrap;
   flex-shrink: 0;
   cursor: pointer;
   user-select: none;
-  box-shadow:
-    0 -2px 0 0 var(--ink-primary),
-    0 2px 0 0 var(--ink-primary),
-    -2px 0 0 0 var(--ink-primary),
-    2px 0 0 0 var(--ink-primary),
-    3px 5px 0 0 var(--ink-primary),
-    5px 3px 0 0 var(--ink-primary),
-    inset 0 2px 0 0 rgba(255, 255, 255, 0.35),
-    inset 0 -2px 0 0 rgba(37, 37, 37, 0.14);
+  border-width: 1px;
+  border-style: solid;
   transition:
     transform 130ms cubic-bezier(0.16, 1, 0.3, 1),
     box-shadow 130ms cubic-bezier(0.16, 1, 0.3, 1),
     background-color 140ms ease,
+    border-color 140ms ease,
     color 140ms ease;
 }
 
-.pixel-btn:hover {
-  transform: translate(-1px, -1px);
-  box-shadow:
-    0 -2px 0 0 var(--ink-primary),
-    0 2px 0 0 var(--ink-primary),
-    -2px 0 0 0 var(--ink-primary),
-    2px 0 0 0 var(--ink-primary),
-    4px 6px 0 0 var(--ink-primary),
-    6px 4px 0 0 var(--ink-primary),
-    inset 0 2px 0 0 rgba(255, 255, 255, 0.42),
-    inset 0 -2px 0 0 rgba(37, 37, 37, 0.14);
+.pro-btn:hover {
+  transform: translateY(-1px);
 }
 
-.pixel-btn:active {
-  transform: translate(3px, 3px);
-  box-shadow:
-    0 -2px 0 0 var(--ink-primary),
-    0 2px 0 0 var(--ink-primary),
-    -2px 0 0 0 var(--ink-primary),
-    2px 0 0 0 var(--ink-primary),
-    inset 0 2px 0 0 rgba(37, 37, 37, 0.16);
+.pro-btn:active {
+  transform: translateY(1px);
 }
 
-.pixel-btn:focus-visible {
-  outline: 2px solid var(--accent-lavender);
-  outline-offset: 6px;
+.pro-btn:focus-visible {
+  outline: 2px solid var(--accent-cobalt);
+  outline-offset: 3px;
 }
 
-/* Stepped pixel-art framing reserved exclusively for PixelCharacter stages */
-.pixel-stage-frame {
-  position: relative;
-  border-radius: 0;
-  margin: 2px 4px 4px 2px;
-  box-shadow:
-    0 -2px 0 0 var(--ink-primary),
-    0 2px 0 0 var(--ink-primary),
-    -2px 0 0 0 var(--ink-primary),
-    2px 0 0 0 var(--ink-primary),
-    3px 5px 0 0 rgba(37, 37, 37, 0.18),
-    5px 3px 0 0 rgba(37, 37, 37, 0.18);
-}
-
-/* Subtle 16px drafting grid strictly inside reserved pixel sprite canvas */
-.pixel-canvas-grid {
-  background-image:
-    linear-gradient(to right, rgba(37, 37, 37, 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(37, 37, 37, 0.045) 1px, transparent 1px);
-  background-size: 16px 16px;
-}
-
-/* Crisp pixel-art image rendering strictly for 16-bit character sprites */
+/* Crisp pixel-art image rendering strictly for 32-bit Pixel Ansh sprites */
 .pixel-sprite-img {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
@@ -162,64 +121,26 @@
   }
 }
 
-@keyframes pixel-hop-pop {
+/* Accurate mid-air vertical jump arc with crouch anticipation and crisp landing squash */
+@keyframes pixel-true-jump {
   0% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0) scaleX(1) scaleY(1);
   }
-  35% {
-    transform: translateY(-10px) scale(1.03);
+  14% {
+    transform: translateY(5px) scaleX(1.1) scaleY(0.87);
   }
-  70% {
-    transform: translateY(2px) scale(0.99);
+  44% {
+    transform: translateY(-64px) scaleX(0.93) scaleY(1.09) rotate(-4deg);
+  }
+  65% {
+    transform: translateY(-56px) scaleX(0.95) scaleY(1.06) rotate(3deg);
+  }
+  87% {
+    transform: translateY(5px) scaleX(1.13) scaleY(0.86) rotate(0deg);
   }
   100% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0) scaleX(1) scaleY(1);
   }
-}
-
-.animate-pixel-idle {
-  animation: pixel-idle-bob 1.9s steps(2, end) infinite;
-}
-
-.animate-pixel-hop {
-  animation: pixel-hop-pop 280ms steps(3, end) 1;
-}
-
-/* Clean editorial range scrubber for Section 02 photo-to-pixel stage */
-.editorial-range {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 4px;
-  background: var(--border-subtle);
-  outline: none;
-  cursor: pointer;
-}
-
-.editorial-range::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  background: var(--accent-lavender);
-  border: 2px solid var(--ink-primary);
-  box-shadow: 2px 2px 0 0 var(--ink-primary);
-  cursor: pointer;
-}
-
-.editorial-range::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 0;
-  background: var(--accent-lavender);
-  border: 2px solid var(--ink-primary);
-  box-shadow: 2px 2px 0 0 var(--ink-primary);
-  cursor: pointer;
-}
-
-.editorial-range:focus-visible::-webkit-slider-thumb {
-  outline: 2px solid var(--accent-lavender);
-  outline-offset: 3px;
 }
 
 @keyframes pixel-dust-left {
@@ -229,11 +150,11 @@
   }
   25% {
     opacity: 0.85;
-    transform: translate(-14px, -4px) scale(1);
+    transform: translate(-18px, -5px) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translate(-26px, -10px) scale(0.5);
+    transform: translate(-34px, -12px) scale(0.35);
   }
 }
 
@@ -244,20 +165,66 @@
   }
   25% {
     opacity: 0.85;
-    transform: translate(14px, -4px) scale(1);
+    transform: translate(18px, -5px) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translate(26px, -10px) scale(0.5);
+    transform: translate(34px, -12px) scale(0.35);
   }
 }
 
+/* Continuous vertical animated signal beam traveling down the architectural spine */
+@keyframes spine-beam {
+  0% {
+    top: -180px;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+/* Gentle waiting-for-call phone ring wave */
+@keyframes ring-ripple {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+.animate-pixel-idle {
+  animation: pixel-idle-bob 2.2s ease-in-out infinite;
+}
+
+.animate-pixel-jump {
+  animation: pixel-true-jump 580ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
 .animate-pixel-dust-left {
-  animation: pixel-dust-left 420ms steps(4, end) forwards;
+  animation: pixel-dust-left 440ms steps(4, end) forwards;
 }
 
 .animate-pixel-dust-right {
-  animation: pixel-dust-right 420ms steps(4, end) forwards;
+  animation: pixel-dust-right 440ms steps(4, end) forwards;
+}
+
+.animate-spine-beam {
+  animation: spine-beam 7.5s linear infinite;
+}
+
+.animate-ring-ripple {
+  animation: ring-ripple 1.8s ease-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -265,13 +232,15 @@
     scroll-behavior: auto;
   }
 
-  .pixel-btn,
-  .pixel-btn:hover,
-  .pixel-btn:active,
+  .pro-btn,
+  .pro-btn:hover,
+  .pro-btn:active,
   .animate-pixel-idle,
-  .animate-pixel-hop,
+  .animate-pixel-jump,
   .animate-pixel-dust-left,
-  .animate-pixel-dust-right {
+  .animate-pixel-dust-right,
+  .animate-spine-beam,
+  .animate-ring-ripple {
     animation: none;
     transition: none;
     transform: none;

@@ -3,37 +3,37 @@ import { X } from 'lucide-react';
 import { CertificationsSection } from './components/CertificationsSection';
 import { ContactSection } from './components/ContactSection';
 import { ExperienceSection } from './components/ExperienceSection';
-import { FloatingPixelBuddy } from './components/FloatingPixelBuddy';
+import {
+  FloatingPixelBuddy,
+  type ActiveJumpFlight,
+} from './components/FloatingPixelBuddy';
 import { Footer } from './components/Footer';
-import { HeroSection } from './components/HeroSection';
+import { HeroSection, type JumpLaunchCoords } from './components/HeroSection';
 import { Navbar } from './components/Navbar';
+import { ScrollRailNav } from './components/ScrollRailNav';
 import { SkillsSection } from './components/SkillsSection';
 import { SocialPlatformsSection } from './components/SocialPlatformsSection';
-import { WaveDivider } from './components/ui/WaveDivider';
-import {
-  SECTION_BUDDY_MOODS,
-  SECTION_THEMES,
-  SOCIAL_PLATFORMS,
-  type PixelSpriteKey,
-  type SocialPlatformId,
-} from './config/portfolioStructure';
+import { SystemsSection } from './components/SystemsSection';
+import type { PixelSpriteKey, SocialPlatformId } from './config/portfolioStructure';
 
 const OBSERVED_SECTION_IDS = [
   'hero',
   'social-platforms',
-  'skills',
+  'systems',
   'experience',
+  'skills',
   'certifications',
   'contact',
 ] as const;
 
 const SECTION_CHAPTER_LABELS: Record<string, string> = {
-  hero: '01 · Hero',
-  'social-platforms': '02 · Social',
-  skills: '03 · Skills',
+  hero: '01 · Intro',
+  'social-platforms': '02 · Socials',
+  systems: '03 · Systems',
   experience: '04 · Experience',
-  certifications: '05 · Credentials',
-  contact: '06 · Contact',
+  skills: '05 · Skills',
+  certifications: '06 · Credentials',
+  contact: '07 · Contact',
 };
 
 export default function App() {
@@ -42,12 +42,12 @@ export default function App() {
     useState<SocialPlatformId>('github');
   const [hoveredPlatformId, setHoveredPlatformId] =
     useState<SocialPlatformId | null>(null);
-  const [activeExperienceId, setActiveExperienceId] = useState<
-    'engineer' | 'intern'
-  >('engineer');
+
   const [buddyVisible, setBuddyVisible] = useState(false);
-  const [dropSequence, setDropSequence] = useState(0);
-  const [quipTick, setQuipTick] = useState(0);
+  const [jumpFlight, setJumpFlight] = useState<ActiveJumpFlight | null>(null);
+  const pendingScrollAfterJumpRef = useRef(false);
+  const flightCounterRef = useRef(0);
+
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
 
@@ -62,11 +62,50 @@ export default function App() {
     }, 3600);
   }, []);
 
-  const handleBuddyReleaseChange = useCallback((released: boolean) => {
-    setBuddyVisible(released);
-    if (released) {
-      setDropSequence((prev) => prev + 1);
+  const handleLaunchJump = useCallback((coords: JumpLaunchCoords) => {
+    const prefersReduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (prefersReduced) {
+      setJumpFlight(null);
+      setBuddyVisible(true);
+      if (coords.scrollAfterJump) {
+        document
+          .getElementById('social-platforms')
+          ?.scrollIntoView({ behavior: 'auto' });
+      }
+      return;
     }
+
+    pendingScrollAfterJumpRef.current = Boolean(coords.scrollAfterJump);
+    flightCounterRef.current += 1;
+    setBuddyVisible(false);
+    setJumpFlight({
+      id: flightCounterRef.current,
+      startX: coords.startX,
+      startY: coords.startY,
+    });
+  }, []);
+
+  const handleJumpFlightComplete = useCallback(() => {
+    setJumpFlight(null);
+    setBuddyVisible(true);
+
+    if (pendingScrollAfterJumpRef.current) {
+      pendingScrollAfterJumpRef.current = false;
+      window.setTimeout(() => {
+        document
+          .getElementById('social-platforms')
+          ?.scrollIntoView({ behavior: 'smooth' });
+      }, 140);
+    }
+  }, []);
+
+  const handleResetBuddy = useCallback(() => {
+    pendingScrollAfterJumpRef.current = false;
+    setJumpFlight(null);
+    setBuddyVisible(false);
   }, []);
 
   useEffect(() => {
@@ -106,145 +145,100 @@ export default function App() {
     return () => observer.disconnect();
   }, []);
 
-  // Derive the left-stage Main Character's sprite, scale, and quip across every section
-  const buddyState: {
-    spriteKey: PixelSpriteKey;
-    characterScale: number;
-    contextTag: string;
-    caption: string;
-  } = (() => {
-    if (activeSectionId === 'social-platforms') {
-      const targetPlatformId = hoveredPlatformId ?? selectedPlatformId;
-      const platform =
-        SOCIAL_PLATFORMS.find((p) => p.id === targetPlatformId) ??
-        SOCIAL_PLATFORMS[0];
-      return {
-        spriteKey: platform.id,
-        characterScale: 1,
-        contextTag: `${platform.name} · ${platform.personaTitle}`,
-        caption: hoveredPlatformId
-          ? platform.peekTeaser
-          : platform.humorCaption,
-      };
+  const navActiveId =
+    activeSectionId === 'certifications' ? 'experience' : activeSectionId;
+
+  // Shift Pixel Ansh smoothly to the RIGHT side during Social Media so there are never two characters on the left!
+  const buddyDockSide: 'left' | 'right' =
+    activeSectionId === 'social-platforms' ? 'right' : 'left';
+
+  // Pick crisp 32-bit sprite matching the active chapter
+  const activeBuddySprite: PixelSpriteKey = (() => {
+    switch (activeSectionId) {
+      case 'social-platforms':
+        return hoveredPlatformId ?? selectedPlatformId;
+      case 'systems':
+        return 'idle';
+      case 'experience':
+        return 'engineer';
+      case 'skills':
+        return 'github';
+      case 'certifications':
+        return 'grad';
+      case 'contact':
+      case 'hero':
+      default:
+        return 'hero';
     }
-
-    if (activeSectionId === 'experience') {
-      if (activeExperienceId === 'intern') {
-        return {
-          spriteKey: 'intern',
-          characterScale: 0.72,
-          contextTag: 'Mini Intern · LVL 01',
-          caption:
-            'Calsoft Intern Ansh! Smaller sprite, oversized backpack, building zero-downtime Go pricing pipelines.',
-        };
-      }
-
-      return {
-        spriteKey: 'engineer',
-        characterScale: 1.12,
-        contextTag: 'Cloud Engineer · LVL 02',
-        caption:
-          'Leveled up to Development Engineer in Cloud—bigger sprite, 15+ K8s microservices, Star Employee pin!',
-      };
-    }
-
-    const mood = SECTION_BUDDY_MOODS[activeSectionId] ?? SECTION_BUDDY_MOODS.hero;
-    return {
-      spriteKey: mood.spriteKey,
-      characterScale: mood.scale ?? 1,
-      contextTag: mood.contextTag,
-      caption: mood.quips[quipTick % mood.quips.length],
-    };
   })();
 
   return (
-    <div className="min-h-screen bg-canvas text-ink selection:bg-yellow selection:text-ink">
-      <Navbar activeSectionId={activeSectionId} />
+    <div className="min-h-screen bg-canvas text-ink selection:bg-[#DBEAFE] selection:text-ink">
+      <Navbar activeSectionId={navActiveId} />
 
-      <main>
-        {/* 01 — HERO (Warm Cream; scroll-pixelates portrait and drops Main Character onto left stage) */}
+      {/* Left fixed vertical scroll rail navigation with live scroll-filled progress bar */}
+      <ScrollRailNav activeSectionId={activeSectionId} />
+
+      <main className="relative">
+        {/* Continuous animated architectural vertical spine line threading through the entire site */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none hidden lg:block absolute top-0 bottom-0 left-[236px] xl:left-[268px] w-px bg-hairline/90 overflow-hidden z-10"
+        >
+          <div className="absolute inset-x-0 h-48 bg-gradient-to-b from-transparent via-cobalt/75 to-transparent animate-spine-beam" />
+        </div>
+
+        {/* 01 — HERO (Overall Software Engineer profile + delayed starting jump launchpad) */}
         <HeroSection
-          onBuddyReleaseChange={handleBuddyReleaseChange}
+          buddyLanded={buddyVisible}
+          onLaunchJump={handleLaunchJump}
+          onResetBuddy={handleResetBuddy}
           onNotify={handleNotify}
         />
 
-        <WaveDivider
-          fromColor={SECTION_THEMES.hero}
-          toColor={SECTION_THEMES.social}
-          variant="gentle"
-        />
-
-        {/* 02 — SOCIAL & SPOTLIGHT (Soft Lavender Mist; Snapchat-style peeking character + real platforms) */}
+        {/* 02 — MAIN SECTION: SOCIAL WORLDS (Per-tab visual themes + nose-only sneaking Ansh + right-docked buddy) */}
         <SocialPlatformsSection
           selectedPlatformId={selectedPlatformId}
           onSelectPlatform={setSelectedPlatformId}
           onHoverPlatformChange={setHoveredPlatformId}
         />
 
-        <WaveDivider
-          fromColor={SECTION_THEMES.social}
-          toColor={SECTION_THEMES.skills}
-          variant="crest"
-        />
+        {/* 03 — SYSTEMS & ARCHITECTURE */}
+        <SystemsSection />
 
-        {/* 03 — SKILLS & STACK (Soft Sage Linen) */}
+        {/* 04 — WORK EXPERIENCE (Minimal Rajan-style editorial rows) */}
+        <ExperienceSection />
+
+        {/* 05 — TOOLS I BUILD WITH (21 real tools + sneaking hover peeks) */}
         <SkillsSection />
 
-        <WaveDivider
-          fromColor={SECTION_THEMES.skills}
-          toColor={SECTION_THEMES.experience}
-          variant="stepped"
-        />
-
-        {/* 04 — EXPERIENCE (Warm Buttercream Sand; Mini Intern -> Big Cloud Engineer growth) */}
-        <ExperienceSection
-          activeExperienceId={activeExperienceId}
-          onSelectExperience={setActiveExperienceId}
-        />
-
-        <WaveDivider
-          fromColor={SECTION_THEMES.experience}
-          toColor={SECTION_THEMES.certifications}
-          variant="gentle"
-          flip
-        />
-
-        {/* 05 — CERTIFICATIONS & GRADUATION (Soft Lilac; AWS SAA, AWS CP, B.Tech CSE) */}
+        {/* 06 — CREDENTIALS & EDUCATION (AWS & B.Tech watermarked tiles) */}
         <CertificationsSection />
 
-        <WaveDivider
-          fromColor={SECTION_THEMES.certifications}
-          toColor={SECTION_THEMES.contact}
-          variant="crest"
-          flip
-        />
-
-        {/* 06 — CONTACT & RESUME DOWNLOAD (Warm Cream) */}
+        {/* 07 — CONTACT & RESUME (Waiting-for-call Pixel Ansh perched ON the Contact Card!) */}
         <ContactSection onNotify={handleNotify} />
 
         <Footer />
       </main>
 
-      {/* The Main Character: drops onto the open LEFT stage and travels freely through every colored wave section */}
+      {/* Bigger Pixel Ansh: click = jump only, fast-scroll-gated jump, shifts RIGHT during Social Media */}
       <FloatingPixelBuddy
         visible={buddyVisible}
-        spriteKey={buddyState.spriteKey}
-        characterScale={buddyState.characterScale}
-        sectionIndexLabel={SECTION_CHAPTER_LABELS[activeSectionId] ?? '01 · Hero'}
-        contextTag={buddyState.contextTag}
-        caption={buddyState.caption}
-        dropSequence={dropSequence}
-        onBuddyTap={() => setQuipTick((prev) => prev + 1)}
+        jumpFlight={jumpFlight}
+        onJumpFlightComplete={handleJumpFlightComplete}
+        spriteKey={activeBuddySprite}
+        dockSide={buddyDockSide}
+        sectionIndexLabel={SECTION_CHAPTER_LABELS[activeSectionId] ?? '01 · Intro'}
       />
 
-      {/* Quiet, dismissible feedback toast on bottom-right */}
+      {/* Quiet, dismissible confirmation toast */}
       {noticeMessage && (
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-5 right-5 z-50 max-w-sm bg-surface border border-ink px-4 py-3 shadow-[3px_3px_0_0_#252525] flex items-start gap-3"
+          className="fixed bottom-5 right-5 z-50 max-w-sm bg-surface border border-hairline-strong rounded-xl px-4 py-3 shadow-lg flex items-start gap-3"
         >
-          <p className="text-xs sm:text-sm text-ink leading-snug">
+          <p className="text-xs sm:text-sm text-ink font-medium leading-snug">
             {noticeMessage}
           </p>
           <button

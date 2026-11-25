@@ -1,0 +1,110 @@
+{
+  "github": {
+    "featured": {
+      "title": "Ansh-Joshi-Portfolio",
+      "url": "https://github.com/AnshJoshi1811/Ansh-Joshi-Portfolio",
+      "date": "Nov 2026",
+      "excerpt": "This is my Portiflio",
+      "meta": "TypeScript"
+    },
+    "more": [
+      {
+        "title": "SystemDesign",
+        "url": "https://github.com/AnshJoshi1811/SystemDesign",
+        "date": "Nov 2026",
+        "excerpt": "Interactive, hands-on labs for practicing system design interview concepts scaling, estimation, rate limiting, consistent hashing, key-value stores, ID generation, and URL shorteners.",
+        "meta": "TypeScript"
+      },
+      {
+        "title": "gcp-cloud-simulator",
+        "url": "https://github.com/AnshJoshi1811/gcp-cloud-simulator",
+        "date": "Oct 2026",
+        "excerpt": "",
+        "meta": "TypeScript"
+      },
+      {
+        "title": "minicloud",
+        "url": "https://github.com/AnshJoshi1811/minicloud",
+        "date": "Oct 2026",
+        "excerpt": "A local AWS emulator: EC2 instances become real Docker containers, usable with the real, unmodified Terraform aws provider. Extracted from gcp-cloud-simulator.",
+        "meta": "Python"
+      }
+    ]
+  },
+  "youtube": {
+    "featured": {
+      "title": "Docker Commands",
+      "url": "https://www.youtube.com/watch?v=04DfOAKsJHs",
+      "date": "Jul 2026",
+      "excerpt": "",
+      "image": "https://i.ytimg.com/vi/04DfOAKsJHs/hqdefault.jpg",
+      "meta": "1 view"
+    },
+    "more": [
+      {
+        "title": "Running of Container",
+        "url": "https://www.youtube.com/watch?v=nibnAiAjmFY",
+        "date": "Jul 2026",
+        "excerpt": "",
+        "image": "https://i.ytimg.com/vi/nibnAiAjmFY/hqdefault.jpg",
+        "meta": "5 views"
+      },
+      {
+        "title": "Mastering Go Strings, Bytes, and Runes",
+        "url": "https://www.youtube.com/watch?v=1y31CcXnuFE",
+        "date": "Apr 2026",
+        "excerpt": "Medium Link Will be Available depending on Video",
+        "image": "https://i.ytimg.com/vi/1y31CcXnuFE/hqdefault.jpg",
+        "meta": "12 views"
+      },
+      {
+        "title": "You’re Wasting Tokens with AI Coding Assistants — Here’s How to Stop",
+        "url": "https://www.youtube.com/watch?v=oTDCHa2xF_g",
+        "date": "Feb 2026",
+        "excerpt": "Medium Link : https://medium.com/@anshjoshii/stop-burning-tokens-a-smarter-way-to-use-ai-coding-tools-2190735fe326 #Artificial Intelligence #Software…",
+        "image": "https://i.ytimg.com/vi/oTDCHa2xF_g/hqdefault.jpg",
+        "meta": "19 views"
+      }
+    ]
+  },
+  "medium": {
+    "featured": {
+      "title": "Stop Burning Tokens: A Smarter Way to Use AI Coding Tools ⚡",
+      "url": "https://medium.com/@anshjoshii/stop-burning-tokens-a-smarter-way-to-use-ai-coding-tools-2190735fe326",
+      "date": "Feb 2026",
+      "excerpt": "Quick read — 3 minutes Practical, repeatable tips to save tokens and get precise results from Cursor, Copilot, ChatGPT, and other coding agents. TL;DR👀 AI tools waste…",
+      "image": "https://cdn-images-1.medium.com/max/1024/1*Yg3RjYOKO5YNO8MB0rt2-w.png",
+      "meta": ""
+    },
+    "more": [
+      {
+        "title": "Kubernetes Services",
+        "url": "https://medium.com/@anshjoshii/kubernetes-services-6165ca8cff67",
+        "date": "Feb 2026",
+        "excerpt": "INTRODUCTION: THE FLAT NETWORK FOUNDATION Unlike traditional networking, where engineers deal with subnets, port mapping, and NAT rules, Kubernetes enforces seamless…",
+        "image": "https://cdn-images-1.medium.com/max/1024/1*ihg1AjtS92qy2eHiiRiPXQ.png",
+        "meta": ""
+      },
+      {
+        "title": "Kubernetes Networking 101:",
+        "url": "https://medium.com/@anshjoshii/kubernetes-networking-101-0b7b1154e2a5",
+        "date": "Feb 2026",
+        "excerpt": "INTRODUCTION: THE FLAT NETWORK PHILOSOPHY At first glance, Kubernetes networking appears as a web of virtual interfaces and distributed components. However, beneath this…",
+        "image": "https://cdn-images-1.medium.com/max/1024/1*nKxsgQ828ufcKUjtPxpOjg.png",
+        "meta": ""
+      }
+    ]
+  },
+  "reddit": {
+    "featured": {
+      "title": "Three Royal Enfields, a night ride and the Road to Heaven — Kutch, Gujarat (November 2025)",
+      "url": "https://www.reddit.com/user/Original_Mongoose_74/comments/1y51o6t/three_royal_enfields_a_night_ride_and_the_road_to/",
+      "date": "Nov 2026",
+      "excerpt": "Sharing a memory from November 2025 that I still think about. We were in Bhuj, Gujarat, and decided to explore Kutch on our bikes…",
+      "image": "",
+      "meta": ""
+    },
+    "more": []
+  },
+  "fetchedAt": "2026-11-25T16:21:50.500Z"
+}

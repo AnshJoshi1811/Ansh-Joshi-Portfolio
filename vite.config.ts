@@ -2,13 +2,50 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
-import {defineConfig} from 'vite';
+import {defineConfig, loadEnv, type Plugin} from 'vite';
 
-export default defineConfig(() => {
+/**
+ * Injects the Umami Cloud analytics script into index.html at build time.
+ * Skipped in dev (`vite`), and when the website ID is an empty string.
+ * UMAMI_DOMAINS limits tracking to the production hostnames, so Vercel preview
+ * deploys don't count as visits.
+ */
+function umamiAnalytics(websiteId: string | undefined, domains: string): Plugin {
+  return {
+    name: 'umami-analytics',
+    apply: 'build',
+    transformIndexHtml() {
+      const id = websiteId?.trim();
+      if (!id) return [];
+      if (!/^[0-9a-f-]{36}$/i.test(id)) {
+        throw new Error(`UMAMI_WEBSITE_ID must be a UUID, got "${id}"`);
+      }
+      const attrs: Record<string, string | boolean> = {
+        defer: true,
+        src: 'https://cloud.umami.is/script.js',
+        'data-website-id': id,
+      };
+      if (domains.trim()) attrs['data-domains'] = domains.replace(/[^a-z0-9.,-]/gi, '');
+      return [{tag: 'script', attrs, injectTo: 'head'}];
+    },
+  };
+}
+
+// Umami Cloud website ID for itsansh.space. It is public (it ships in the page
+// HTML anyway). Override with the UMAMI_WEBSITE_ID env var; set it to an empty
+// string to build without analytics.
+const UMAMI_WEBSITE_ID = '99885e3e-7db7-47d7-9bb7-c744c82a04d4';
+
+export default defineConfig(({mode}) => {
+  const env = loadEnv(mode, process.cwd(), '');
   return {
     plugins: [
       react(),
       tailwindcss(),
+      umamiAnalytics(
+        env.UMAMI_WEBSITE_ID ?? UMAMI_WEBSITE_ID,
+        env.UMAMI_DOMAINS ?? 'itsansh.space,www.itsansh.space',
+      ),
       // Copies src/assets into dist/ so root-relative URLs like
       // "/src/assets/images/..." (e.g. generate_image output) still resolve
       // in production builds. Do not remove.

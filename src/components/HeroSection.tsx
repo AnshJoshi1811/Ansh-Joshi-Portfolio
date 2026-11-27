@@ -166,7 +166,14 @@ export function HeroSection({ onNotify }: HeroSectionProps) {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 pt-1">
-              <PixelButton onClick={handleDownloadResume} variant="surface" size="lg">
+              <PixelButton
+                onClick={handleDownloadResume}
+                variant="surface"
+                size="lg"
+                data-umami-event="resume-download"
+                data-umami-event-format="html"
+                data-umami-event-location="hero"
+              >
                 <Download className="w-4 h-4 text-cobalt" aria-hidden="true" />
                 <span>Download Resume</span>
               </PixelButton>
@@ -175,6 +182,9 @@ export function HeroSection({ onNotify }: HeroSectionProps) {
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-2 t-small font-medium text-muted">
               <a
                 href="https://github.com/ANSHJOSHI1811"
+                data-umami-event="profile-click"
+                data-umami-event-platform="github"
+                data-umami-event-location="hero"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 hover:text-ink transition-colors"
@@ -185,6 +195,9 @@ export function HeroSection({ onNotify }: HeroSectionProps) {
               <span aria-hidden="true" className="text-hairline-strong">·</span>
               <a
                 href="https://linkedin.com/in/anshjoshi1811"
+                data-umami-event="profile-click"
+                data-umami-event-platform="linkedin"
+                data-umami-event-location="hero"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 hover:text-ink transition-colors"
@@ -195,6 +208,9 @@ export function HeroSection({ onNotify }: HeroSectionProps) {
               <span aria-hidden="true" className="text-hairline-strong">·</span>
               <a
                 href="https://anshjoshi1811.github.io/SystemDesign/"
+                data-umami-event="profile-click"
+                data-umami-event-platform="systemdesign"
+                data-umami-event-location="hero"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 hover:text-cobalt transition-colors"
@@ -203,7 +219,12 @@ export function HeroSection({ onNotify }: HeroSectionProps) {
                 <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
               </a>
               <span aria-hidden="true" className="text-hairline-strong">·</span>
-              <a href={`mailto:${SITE_META.email}`} className="hover:text-ink transition-colors">
+              <a
+                href={`mailto:${SITE_META.email}`}
+                data-umami-event="email-click"
+                data-umami-event-location="hero"
+                className="hover:text-ink transition-colors"
+              >
                 {SITE_META.email}
               </a>
             </div>

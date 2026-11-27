@@ -95,6 +95,8 @@ export function ContactSection({ onNotify }: ContactSectionProps) {
             <div className="flex flex-wrap items-center gap-3">
               <a
                 href={`mailto:${SITE_META.email}`}
+                data-umami-event="email-click"
+                data-umami-event-location="contact"
                 className="font-display text-xl sm:text-2xl font-bold tracking-[-0.02em] text-ink underline decoration-hairline-strong decoration-2 underline-offset-[6px] hover:decoration-ink transition-colors break-all"
               >
                 {SITE_META.email}
@@ -102,6 +104,7 @@ export function ContactSection({ onNotify }: ContactSectionProps) {
               <button
                 type="button"
                 onClick={handleCopyEmail}
+                data-umami-event="email-copy"
                 className="inline-flex items-center gap-1.5 rounded-lg border border-hairline-strong bg-canvas px-3 py-1.5 text-xs font-semibold text-ink hover:bg-recessed cursor-pointer transition-colors"
               >
                 {copiedEmail ? (
@@ -121,6 +124,7 @@ export function ContactSection({ onNotify }: ContactSectionProps) {
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
               <a
                 href={`tel:${SITE_META.phone}`}
+                data-umami-event="phone-click"
                 className="inline-flex items-center gap-2 hover:text-ink transition-colors"
               >
                 <Phone className="w-4 h-4" aria-hidden="true" />
@@ -136,6 +140,9 @@ export function ContactSection({ onNotify }: ContactSectionProps) {
               <button
                 type="button"
                 onClick={handleDownloadResume}
+                data-umami-event="resume-download"
+                data-umami-event-format="html"
+                data-umami-event-location="contact"
                 className="pro-btn bg-ink hover:bg-ink/90 text-white border-ink px-5 py-2.5 text-sm"
               >
                 <Download className="w-4 h-4" aria-hidden="true" />
@@ -144,6 +151,9 @@ export function ContactSection({ onNotify }: ContactSectionProps) {
               <button
                 type="button"
                 onClick={handleDownloadLatex}
+                data-umami-event="resume-download"
+                data-umami-event-format="latex"
+                data-umami-event-location="contact"
                 className="pro-btn bg-surface hover:bg-recessed text-ink border-hairline-strong px-4 py-2.5 text-sm"
               >
                 <FileCode2 className="w-4 h-4" aria-hidden="true" />
@@ -160,6 +170,9 @@ export function ContactSection({ onNotify }: ContactSectionProps) {
                 <li key={platform.id}>
                   <a
                     href={platform.profileUrl}
+                    data-umami-event="profile-click"
+                    data-umami-event-platform={platform.id}
+                    data-umami-event-location="contact"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="group flex items-center gap-2.5 rounded-xl border border-hairline bg-canvas px-3 py-2.5 text-sm font-semibold text-ink hover:border-hairline-strong hover:bg-recessed transition-colors"

@@ -236,6 +236,8 @@ export function SocialPlatformsSection() {
                       aria-label={p.name}
                       title={p.name}
                       onClick={() => setSelectedId(p.id)}
+                      data-umami-event="social-tab"
+                      data-umami-event-platform={p.id}
                       style={
                         isSelected
                           ? {
@@ -260,6 +262,9 @@ export function SocialPlatformsSection() {
 
               <a
                 href={platform.profileUrl}
+                data-umami-event="profile-click"
+                data-umami-event-platform={platform.id}
+                data-umami-event-location="socials"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ backgroundColor: vibe.accent, boxShadow: '4px 4px 0 0 #0F172A' }}
@@ -294,6 +299,8 @@ export function SocialPlatformsSection() {
                         <li key={item.url + item.title}>
                           <a
                             href={item.url}
+                            data-umami-event="post-click"
+                            data-umami-event-platform={platform.id}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ borderColor: vibe.border }}
@@ -354,6 +361,9 @@ function LatestCard({ platformId, platformName, item, vibe }: LatestCardProps) {
   return (
     <a
       href={item.url}
+      data-umami-event="post-click"
+      data-umami-event-platform={platformId}
+      data-umami-event-featured="true"
       target="_blank"
       rel="noopener noreferrer"
       style={{ borderColor: vibe.accent, boxShadow: `6px 6px 0 0 ${vibe.accent}33` }}
